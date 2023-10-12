@@ -1,10 +1,10 @@
 import { EventEmitter } from "events";
 
 function isObject(a: unknown): a is object {
-    return !!a && typeof a === "object"
+    return !!a && typeof a === "object";
 }
 function isString(a: unknown): a is string {
-    return typeof a === "string"
+    return typeof a === "string";
 }
 
 function deepCopyObj(obj: object): object {
@@ -23,7 +23,7 @@ function deepCopyArray(arr: Array<any>): Array<any> {
     let newArr = [];
     for (var v of arr) {
         let nv = deepCopy(v);
-        newArr.push(nv)
+        newArr.push(nv);
     }
     return newArr;
 }
@@ -41,20 +41,20 @@ function deepCopy(v: any): any {
     else if (typeof v === "function")
         return v;
     else
-        throw new TypeError(`this object does not support deep copy: ${v}`)
+        throw new TypeError(`this object does not support deep copy: ${v}`);
 }
 
 class ModalRuntimeError extends Error {
-    constructor(msg?: string) { super(msg) }
+    constructor(msg?: string) { super(msg); }
 }
 
 class ParseKeymapError extends Error {
-    constructor(msg?: string) { super(msg) }
+    constructor(msg?: string) { super(msg); }
 }
 
 class ParseKeysError extends ParseKeymapError {
     constructor(source: string, pos: number) {
-        super(`parse \"${source}\" error, at ${pos}`)
+        super(`parse \"${source}\" error, at ${pos}`);
     }
 }
 
@@ -67,7 +67,7 @@ function parseToKeys(keyStr: string): string[] {
         _chars: string[];
         constructor(s: string) {
             this._cur = 0;
-            this._source = s
+            this._source = s;
             this._chars = [...s];
         }
         getSource(): string { return this._source; }
@@ -80,12 +80,12 @@ function parseToKeys(keyStr: string): string[] {
         }
     }
     function _atom(s: StrIter): string[] {
-        let first_v = s.peek(0)
-        let second_v = s.peek(1)
-        let third_v = s.peek(2)
+        let first_v = s.peek(0);
+        let second_v = s.peek(1);
+        let third_v = s.peek(2);
 
         if (!first_v)
-            throw new ParseKeysError(s.getSource(), s.getCur())
+            throw new ParseKeysError(s.getSource(), s.getCur());
 
         if (!second_v || second_v !== "-") {
             s.next();
@@ -93,7 +93,7 @@ function parseToKeys(keyStr: string): string[] {
         }
 
         if (!third_v)
-            throw new ParseKeysError(s.getSource(), s.getCur())
+            throw new ParseKeysError(s.getSource(), s.getCur());
 
         let beg, end;
         if (first_v < third_v) {
@@ -105,13 +105,13 @@ function parseToKeys(keyStr: string): string[] {
         }
 
         if (!beg || !end)
-            throw new ParseKeysError(s.getSource(), s.getCur())
+            throw new ParseKeysError(s.getSource(), s.getCur());
 
         s.next(), s.next(), s.next();
 
-        let res = []
+        let res = [];
         for (var i = beg; i <= end; i++) {
-            res.push(String.fromCodePoint(i))
+            res.push(String.fromCodePoint(i));
         }
         return res;
     }
@@ -128,14 +128,14 @@ function parseToKeys(keyStr: string): string[] {
 
             n = s.next();
         }
-        return res
+        return res;
     }
 
     if (typeof keyStr !== "string")
-        throw new TypeError("Expected string")
+        throw new TypeError("Expected string");
 
-    let keySeq = _seq(new StrIter(keyStr))
-    return keySeq
+    let keySeq = _seq(new StrIter(keyStr));
+    return keySeq;
 }
 
 interface Parameterized {
@@ -150,17 +150,17 @@ class KeymapParser {
 
     static isParameterized(a: unknown): a is Parameterized {
         if (isObject(a)) {
-            var aa = a as any
-            var t: boolean = aa.args ? (isObject(aa.args) || isString(aa.args)) : true
-            return isString(aa.command) && t
+            var aa = a as any;
+            var t: boolean = aa.args ? (isObject(aa.args) || isString(aa.args)) : true;
+            return isString(aa.command) && t;
         }
-        return false
+        return false;
     }
     static isCommandSeq(a: unknown): a is Command[] {
-        return a instanceof Array && a.every(KeymapParser.isCommand)
+        return a instanceof Array && a.every(KeymapParser.isCommand);
     }
     static isCommand(a: unknown): a is Command {
-        return isString(a) || KeymapParser.isCommandSeq(a) || KeymapParser.isParameterized(a)
+        return isString(a) || KeymapParser.isCommandSeq(a) || KeymapParser.isParameterized(a);
     }
 
     constructor(keymapsConfig: object) {
@@ -174,11 +174,11 @@ class KeymapParser {
         if (isString(v)) {
             return new CommandAction(v);
         } else if (KeymapParser.isParameterized(v)) {
-            return new CommandAction(v.command, v.args)
+            return new CommandAction(v.command, v.args);
         } else if (v instanceof Array) {
             let actions = [];
             for (var c of v) {
-                actions.push(this.__toAction(c))
+                actions.push(this.__toAction(c));
             }
             return new SeqAction(...actions);
         }
@@ -188,7 +188,7 @@ class KeymapParser {
     }
     _toAction(v: unknown): Action | null {
         if (KeymapParser.isCommand(v))
-            return this.__toAction(v)
+            return this.__toAction(v);
         else
             return null;
     }
@@ -208,7 +208,7 @@ class KeymapParser {
         if (action)
             return action;
 
-        return this._parseObjConfig(v)
+        return this._parseObjConfig(v);
     }
 
     _parseObjConfig(obj: any): Keymap {
@@ -217,7 +217,7 @@ class KeymapParser {
 
         let help = (obj as any).help;
         if (typeof help !== "string" && typeof help !== "undefined")
-            throw new Error(`invalid help: ${JSON.stringify(help)}`)
+            throw new Error(`invalid help: ${JSON.stringify(help)}`);
 
         let keymap: Keymap = new Keymap(help);
 
@@ -226,20 +226,20 @@ class KeymapParser {
         for (var [k, v] of Object.entries(obj)) {
             if (k === "id" || k === "help")
                 continue;
-            let keySeq = parseToKeys(k)
+            let keySeq = parseToKeys(k);
             let action = this._toActionOrKeymap(k, v);
             for (var key of keySeq) {
-                keymap.setKey(key, action)
+                keymap.setKey(key, action);
             }
         }
 
         this._keymapsStack.pop();
 
-        return keymap
+        return keymap;
     }
 
     parse(): Keymap {
-        return this._parseObjConfig(this._keymapsConfig)
+        return this._parseObjConfig(this._keymapsConfig);
     }
 }
 
@@ -270,13 +270,13 @@ class CommandAction extends Action {
 }
 
 class FunctionAction extends Action {
-    _func: (Modal: Modal, keySeq: string[]) => Thenable<void> | void
+    _func: (Modal: Modal, keySeq: string[]) => Thenable<void> | void;
     constructor(f: (Modal: Modal, keySeq: string[]) => Thenable<void> | void) {
         super();
         this._func = f;
     }
     async exec(modal: Modal, keySeq: string[]) {
-        await this._func(modal, keySeq)
+        await this._func(modal, keySeq);
     }
 }
 
@@ -310,11 +310,11 @@ class Keymap {
         if (!(keymap_or_action instanceof Action || keymap_or_action instanceof Keymap))
             throw new TypeError(`the parameter "keymap_or_action" of Keymap.setKey() must be Action or Keymap , but "${keymap_or_action}" was given`);
 
-        this._maps.set(key, keymap_or_action)
+        this._maps.set(key, keymap_or_action);
     }
 
     getKey(key: string): Keymap | Action | null {
-        return this._maps.get(key) ?? null
+        return this._maps.get(key) ?? null;
     }
 
     marge(keymap: Keymap) {
@@ -355,11 +355,11 @@ class Modal {
     constructor(name: string, option?: {
         defaultAction?: Action,
         timeout?: number,
-        timeoutAction?: Action
+        timeoutAction?: Action;
         timeoutErrorCallback?: ((err: any) => Thenable<void> | void) | null;
     }) {
         if (typeof name !== "string")
-            throw TypeError("the name of Modal() must be a string")
+            throw TypeError("the name of Modal() must be a string");
 
         this._name = name;
         this._editor = null;
@@ -379,7 +379,7 @@ class Modal {
     getEditor(): Editor | null { return this._editor; }
 
     setRootKeymap(keymap: Keymap) {
-        this._rootKeymap = keymap
+        this._rootKeymap = keymap;
     }
 
     margeKeymap(keymap: Keymap) {
@@ -395,7 +395,7 @@ class Modal {
 
     reset() {
         this._clearTimeout();
-        this._currentKeySeq = []
+        this._currentKeySeq = [];
         this._currentKeymap = null;
     }
 
@@ -413,10 +413,10 @@ class Modal {
 
         if (this._timeoutAction) {
             try {
-                await this._timeoutAction.exec(this, keySeq)
+                await this._timeoutAction.exec(this, keySeq);
             } catch (e) {
                 if (this._timeoutErrorCb)
-                    await this._timeoutErrorCb(e)
+                    await this._timeoutErrorCb(e);
             }
         }
     }
@@ -428,9 +428,9 @@ class Modal {
 
         let ac_or_km: Action | Keymap | null = null;
         if (this._currentKeymap) {
-            ac_or_km = this._currentKeymap.getKey(key)
+            ac_or_km = this._currentKeymap.getKey(key);
         } else {
-            ac_or_km = this._rootKeymap.getKey(key)
+            ac_or_km = this._rootKeymap.getKey(key);
         }
 
         if (ac_or_km instanceof Keymap) {
@@ -474,7 +474,7 @@ class Editor extends EventEmitter {
     }
 
     getModal(modal: string): Modal | undefined {
-        return this._modals.get(modal)
+        return this._modals.get(modal);
     }
 
     removeModal(modal: Modal | string): Modal | undefined {
@@ -487,7 +487,7 @@ class Editor extends EventEmitter {
             return undefined;
 
         let res = this._modals.get(name);
-        this._modals.delete(name)
+        this._modals.delete(name);
         if (res)
             res._editor = null;
 
@@ -497,7 +497,7 @@ class Editor extends EventEmitter {
     removeAllModal() {
         let modals = [...this._modals.values()];
         for (var m of modals)
-            this.removeModal(m)
+            this.removeModal(m);
     }
 
     getCurrentModal(): Modal | undefined {
@@ -506,13 +506,13 @@ class Editor extends EventEmitter {
 
     async _emitkey(key: string) {
         if (!this._currentModal)
-            throw new ModalRuntimeError("no mode currently selected")
+            throw new ModalRuntimeError("no mode currently selected");
         await this._currentModal.emitKey(key);
     }
 
     async emitKey(key: string) {
         for (var k of key) {
-            await this._emitkey(k)
+            await this._emitkey(k);
         }
     }
 
@@ -527,9 +527,9 @@ class Editor extends EventEmitter {
     }
 
     enterMode(modalName: string) {
-        let modal = this._modals.get(modalName)
+        let modal = this._modals.get(modalName);
         if (modal) {
-            this.resetAll()
+            this.resetAll();
             this._currentModal = modal;
             this.emit("enterMode", modalName, this);
         } else {
@@ -555,4 +555,4 @@ export {
     SeqAction,
     ParseKeymapConfigObj,
     deepCopy,
-}
+};
