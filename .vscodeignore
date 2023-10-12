@@ -1,0 +1,11 @@
+.vscode/**
+node_modules/**
+docs/**
+out/**
+src/**
+dist/*.map
+.gitignore
+pnpm-lock.yaml
+tsconfig.json
+webpack.config.js
+todo.txt

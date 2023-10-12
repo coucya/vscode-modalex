@@ -1,0 +1,252 @@
+{
+	"name": "vscode-modalex",
+	"displayName": "ModalEx",
+	"description": "",
+	"version": "0.1.2",
+	"publisher": "couc",
+	"engines": {
+		"vscode": "^1.80.0"
+	},
+	"categories": [
+		"Keymaps",
+		"Other"
+	],
+	"keywords": ["keymaps", "modal", "vim"],
+	"repository": "",
+	"homepage": "",
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "ModalEx",
+			"properties": {
+				"modalex.preset": {
+					"type": "string",
+					"enum": [
+						"none",
+						"simple"
+					],
+					"default": "simple",
+					"description": "Preset key mapping."
+				},
+				"modalex.insertCursorStyle": {
+					"type": "string",
+					"enum": [
+						"block",
+						"block-outline",
+						"line",
+						"line-thin",
+						"underline",
+						"underline-thin"
+					],
+					"default": "line",
+					"description": "Shape of the cursor when in insert mode."
+				},
+				"modalex.normalCursorStyle": {
+					"type": "string",
+					"enum": [
+						"block",
+						"block-outline",
+						"line",
+						"line-thin",
+						"underline",
+						"underline-thin"
+					],
+					"default": "block",
+					"description": "Shape of the cursor when in normal mode."
+				},
+				"modalex.visualCursorStyle": {
+					"type": "string",
+					"enum": [
+						"block",
+						"block-outline",
+						"line",
+						"line-thin",
+						"underline",
+						"underline-thin"
+					],
+					"default": "line-thin",
+					"description": "Shape of the cursor when selection is active in normal mode."
+				},
+				"modalex.insertKeyamps": {
+					"type": "object",
+					"default": {},
+					"patternProperties": {
+						"^.([\\-,].)*$": {
+							"anyOf": [
+								{
+									"type": "string",
+									"description": "VSCode command"
+								},
+								{
+									"type": "array",
+									"description": "Sequence of commands",
+									"items": {
+										"anyOf": [
+											{
+												"type": "object",
+												"description": "Action"
+											},
+											{
+												"type": "string",
+												"description": "VSCode command"
+											}
+										]
+									}
+								},
+								{
+									"type": "object",
+									"description": "VSCode command with arguments",
+									"properties": {
+										"command": {
+											"type": "string",
+											"description": "VSCode command"
+										},
+										"args": {
+											"description": "Command arguments",
+											"anyOf": [
+												{
+													"type": "object"
+												},
+												{
+													"type": "string"
+												}
+											]
+										}
+									}
+								}
+							]
+						}
+					}
+				},
+				"modalex.normalKeyamps": {
+					"type": "object",
+					"default": {},
+					"patternProperties": {
+						"^.([\\-,].)*$": {
+							"anyOf": [
+								{
+									"type": "string",
+									"description": "VSCode command"
+								},
+								{
+									"type": "array",
+									"description": "Sequence of commands",
+									"items": {
+										"anyOf": [
+											{
+												"type": "object",
+												"description": "Action"
+											},
+											{
+												"type": "string",
+												"description": "VSCode command"
+											}
+										]
+									}
+								},
+								{
+									"type": "object",
+									"description": "VSCode command with arguments",
+									"properties": {
+										"command": {
+											"type": "string",
+											"description": "VSCode command"
+										},
+										"args": {
+											"description": "Command arguments",
+											"anyOf": [
+												{
+													"type": "object"
+												},
+												{
+													"type": "string"
+												}
+											]
+										}
+									}
+								}
+							]
+						}
+					}
+				},
+				"modalex.visualKeyamps": {
+					"type": "object",
+					"default": {},
+					"patternProperties": {
+						"^.([\\-,].)*$": {
+							"anyOf": [
+								{
+									"type": "string",
+									"description": "VSCode command"
+								},
+								{
+									"type": "array",
+									"description": "Sequence of commands",
+									"items": {
+										"anyOf": [
+											{
+												"type": "object",
+												"description": "Action"
+											},
+											{
+												"type": "string",
+												"description": "VSCode command"
+											}
+										]
+									}
+								},
+								{
+									"type": "object",
+									"description": "VSCode command with arguments",
+									"properties": {
+										"command": {
+											"type": "string",
+											"description": "VSCode command"
+										},
+										"args": {
+											"description": "Command arguments",
+											"anyOf": [
+												{
+													"type": "object"
+												},
+												{
+													"type": "string"
+												}
+											]
+										}
+									}
+								}
+							]
+						}
+					}
+				}
+			}
+		},
+		"commands": [],
+		"keybindings": [
+			{
+				"key": "Escape",
+				"command": "modalex.enterNormal",
+				"when": "editorTextFocus && !suggestWidgetMultipleSuggestions && !suggestWidgetVisible"
+			}
+		]
+	},
+	"scripts": {
+		"package": "pnpm run webpack & vsce package --no-dependencies",
+		"webpack": "webpack --mode production",
+		"webpack-dev": "webpack --mode development"
+	},
+	"devDependencies": {
+		"@types/node": "^20.7.0",
+		"@types/vscode": "^1.80.0",
+		"ts-loader": "^9.5.0",
+		"typescript": "^5.0.0",
+		"webpack": "^5.88.0",
+		"webpack-cli": "^5.1.0"
+	},
+	"dependencies": {}
+}
