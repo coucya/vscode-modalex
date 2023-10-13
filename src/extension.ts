@@ -2,13 +2,9 @@ import * as vscode from 'vscode';
 import { EventEmitter } from "events";
 
 import * as commands from './commands';
-import * as presetSimple from "./presets/simple";
 import { VSModalEditor } from "./VSEditor";
 import { extensionName, extensionDisplayName } from "./config";
 
-const presets = {
-    simple: presetSimple
-};
 
 let channel: vscode.OutputChannel | null = null;
 function log(msg: string) {
@@ -218,14 +214,21 @@ function doDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent) {
     if (!extension) return;
 
-    let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
-    let oldMode = modalEditor?.getCurrentModal()?.getName();
-    let isSelection = e.selections.every((s) => s.isEmpty);
+    let isSelection = e.selections.some((s) => !s.isEmpty);
 
-    if (!isSelection) {
+    if (isSelection) {
+        let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
+        let oldMode = modalEditor?.getCurrentModal()?.getName();
+
         if (oldMode !== "visual") {
-            log("doDidChangeTextEditorSelection: enter visual.");
             modalEditor?.enterMode("visual");
+        }
+    } else {
+        let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
+        let oldMode = modalEditor?.getCurrentModal()?.getName();
+
+        if (oldMode !== "insert" && e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+            modalEditor?.enterMode("insert");
         }
     }
 }
