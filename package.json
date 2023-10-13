@@ -36,6 +36,11 @@
                     "default": "simple",
                     "description": "Preset key mapping."
                 },
+                "modalex.insertTimeout": {
+                    "type": "number",
+                    "default": 200,
+                    "description": "The timeout in milliseconds during insert mode. less than 0 is equivalent to no timeout time."
+                },
                 "modalex.insertCursorStyle": {
                     "type": "string",
                     "enum": [

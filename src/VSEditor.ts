@@ -24,7 +24,7 @@ type StyleTable = {
 };
 
 function toVSCodeCursorStyle(style: string): vscode.TextEditorCursorStyle {
-    switch (style) {
+    switch (style.toLowerCase()) {
         case "block": return vscode.TextEditorCursorStyle.Block;
         case "block-outline": return vscode.TextEditorCursorStyle.BlockOutline;
         case "line": return vscode.TextEditorCursorStyle.Line;
@@ -44,9 +44,11 @@ class VSModalEditor extends Editor {
     _vsTextEditor: vscode.TextEditor;
     _styles: StyleTable;
     _oldCursorStyle: vscode.TextEditorCursorStyle | undefined;
+    _insertTimeout: number | null;
     _timeoutErrorCallback: (e?: any) => void;
 
     constructor(vsEditor: vscode.TextEditor, option?: {
+        insertTimeout?: number,
         timeoutErrorCallback: (e?: any) => void;
     }) {
         super({
@@ -61,6 +63,7 @@ class VSModalEditor extends Editor {
             visual: vscode.TextEditorCursorStyle.Block,
         };
 
+        this._insertTimeout = option?.insertTimeout ?? null;
         this._timeoutErrorCallback = option?.timeoutErrorCallback ?? (() => { });
 
         this.addListener("enterMode", async (mode: string) => await this._onEnterMode(mode));
@@ -103,7 +106,34 @@ class VSModalEditor extends Editor {
         }
     }
 
-    margeKeymaps(config: {
+    resetKeymaps() {
+        let _insertText = async (modal: Modal, keySeq: string[]) => {
+            let text = keySeq.join("");
+            await vscode.commands.executeCommand('default:type', { text });
+        };
+
+        let insertTextAction = new FunctionAction(_insertText);
+
+        let insert = new Modal("insert", {
+            defaultAction: insertTextAction,
+            timeout: this._insertTimeout ?? undefined,
+            timeoutAction: insertTextAction,
+            timeoutErrorCallback: this._timeoutErrorCallback,
+        });
+        let normal = new Modal("normal");
+        let visual = new Modal("visual");
+
+        normal.setRootKeymap(new Keymap());
+        insert.setRootKeymap(new Keymap());
+        visual.setRootKeymap(new Keymap());
+
+        this.removeAllModal();
+        this.addModal(normal);
+        this.addModal(insert);
+        this.addModal(visual);
+    }
+
+    updateKeymaps(config: {
         normalKeymaps?: object,
         insertKeymaps?: object;
         visualKeymaps?: object;
@@ -126,49 +156,26 @@ class VSModalEditor extends Editor {
         }
     }
 
-    _resetKeymaps() {
-        let _insertText = async (modal: Modal, keySeq: string[]) => {
-            let text = keySeq.join("");
-            await vscode.commands.executeCommand('default:type', { text });
-        };
-
-        let insertTextAction = new FunctionAction(_insertText);
-
-        let insert = new Modal("insert", {
-            defaultAction: insertTextAction,
-            timeout: 200,
-            timeoutAction: insertTextAction,
-            timeoutErrorCallback: this._timeoutErrorCallback,
-        });
-        let normal = new Modal("normal");
-        let visual = new Modal("visual");
-
-        normal.setRootKeymap(new Keymap());
-        insert.setRootKeymap(new Keymap());
-        visual.setRootKeymap(new Keymap());
-
-        this.removeAllModal();
-        this.addModal(normal);
-        this.addModal(insert);
-        this.addModal(visual);
-    }
-
     updateKeymapsFromPreset(presetName: string) {
         if (presetName === "none")
             return;
         let preset: any = (presets as any)[presetName];
         if (preset)
-            this.margeKeymaps(preset);
+            this.updateKeymaps(preset);
     }
 
     updateFromConfig(config: vscode.WorkspaceConfiguration) {
         let preset = config.get<string>("preset") ?? "none";
+        let insertTimeout = config.get<number>("insertTimeout") ?? 0;
+
         let normalKeymaps = config.get<object>("normalKeymaps");
         let insertKeymaps = config.get<object>("insertKeymaps");
         let visualKeymaps = config.get<object>("visualKeymaps");
         let normalCursorStyle = config.get<string>("normalCursorStyle") ?? "block";
         let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
         let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
+
+        this._insertTimeout = insertTimeout >= 0 ? insertTimeout : null;
 
         let styles = {
             normal: toVSCodeCursorStyle(normalCursorStyle),
@@ -177,9 +184,9 @@ class VSModalEditor extends Editor {
         };
         this.setCursorStyle(styles);
 
-        this._resetKeymaps();
+        this.resetKeymaps();
         this.updateKeymapsFromPreset(preset);
-        this.margeKeymaps({ normalKeymaps, insertKeymaps, visualKeymaps });
+        this.updateKeymaps({ normalKeymaps, insertKeymaps, visualKeymaps });
     }
 }
 
