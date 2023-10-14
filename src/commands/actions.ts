@@ -1,52 +1,11 @@
 import * as vscode from "vscode";
 
-import { Editor, Modal } from "./modalEditor";
-import { extensionName, getExtension } from "./extension";
+import { extensionName, getExtension } from "../extension";
 
-const enterNormalId = `${extensionName}.enterNormal`;
-const enterInsertId = `${extensionName}.enterInsert`;
-const enterVisualId = `${extensionName}.enterVisual`;
-const pasteId = `${extensionName}.paste`;
-
-function isAtLineEnd(): boolean {
-    let editor = vscode.window.activeTextEditor;
-    if (editor) {
-        let selection = editor.selection;
-        let line = editor.document.lineAt(selection.end.line);
-        return selection.end.character === line.text.length;
-    } else {
-        return false;
-    }
-}
-
-function subStringCount(str: string, sub: string): number {
-    let n = 0;
-    let it = 0;
-    while ((it = str.indexOf(sub, it)) >= 0)
-        n++;
-    return n;
-}
-
-
-function _enterNormal() {
-    let editor = getExtension().getCurrentEditor();
-    if (editor)
-        editor.enterMode("normal");
-}
-function _enterInsert(option?: { right: boolean; }) {
-    let editor = getExtension().getCurrentEditor();
-    if (editor) {
-        editor.enterMode("insert");
-        if (option?.right && !isAtLineEnd())
-            vscode.commands.executeCommand("cursorRight");
-    }
-}
-function _entervisual() {
-    let editor = getExtension().getCurrentEditor();
-    if (editor) {
-        editor.enterMode("visual");
-    }
-}
+const commandPrefix = `${extensionName}.action`;
+const pasteId = `${commandPrefix}.paste`;
+const transformToUppercaseId = `${commandPrefix}.transformToUppercase`;
+const transformToLowercaseId = `${commandPrefix}.transformToLowercase`;
 
 async function _paste(args?: { before?: boolean; }) {
     let editor = vscode.window.activeTextEditor;
@@ -95,12 +54,43 @@ async function _paste(args?: { before?: boolean; }) {
     }
 }
 
-function registerCommands() {
-    vscode.commands.registerCommand(enterNormalId, _enterNormal);
-    vscode.commands.registerCommand(enterInsertId, _enterInsert);
-    vscode.commands.registerCommand(enterVisualId, _entervisual);
-    vscode.commands.registerCommand(pasteId, _paste);
+function _transformTo(upper: boolean) {
+    let editor = vscode.window.activeTextEditor;
+    if (editor) {
+        let replaced: [vscode.Selection | vscode.Range, string][] = [];
+        for (var selection of editor.selections) {
+            let range: vscode.Range;
+            let newText: string;
+            if (selection.isEmpty) {
+                let start = new vscode.Position(selection.start.line, selection.start.character);
+                let end = new vscode.Position(selection.start.line, selection.start.character + 1);
+                range = new vscode.Range(start, end);
+            } else {
+                range = new vscode.Range(selection.start, selection.end);
+            }
+            if (upper) {
+                newText = editor.document.getText(range).toUpperCase();
+            } else {
+                newText = editor.document.getText(range).toLowerCase();
+            }
+            replaced.push([range, newText]);
+        }
+        editor.edit((builder) => {
+            for (var [s, text] of replaced) {
+                builder.replace(s, text);
+            }
+        });
+    }
 }
+
+function registerCommands(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        vscode.commands.registerCommand(pasteId, _paste),
+        vscode.commands.registerCommand(transformToUppercaseId, () => _transformTo(true)),
+        vscode.commands.registerCommand(transformToLowercaseId, () => _transformTo(false)),
+    );
+}
+
 
 export {
     registerCommands

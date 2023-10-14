@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { EventEmitter } from "events";
 
-import * as commands from './commands';
+import * as commands from './commands/base';
 import { VSModalEditor } from "./VSEditor";
 import { extensionName, extensionDisplayName } from "./config";
 

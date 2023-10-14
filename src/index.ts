@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import * as commands from './commands';
+import * as baseCommands from './commands/base';
+import * as actionsCommands from './commands/actions';
 
 import {
     activate as extActivate,
@@ -8,7 +9,8 @@ import {
 
 
 export function activate(context: vscode.ExtensionContext) {
-    commands.registerCommands();
+    baseCommands.registerCommands(context);
+    actionsCommands.registerCommands(context);
     extActivate(context);
 }
 
