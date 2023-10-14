@@ -2,7 +2,7 @@
     "name": "vscode-modalex",
     "displayName": "ModalEx",
     "description": "",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "publisher": "couc",
     "engines": {
         "vscode": "^1.80.0"
@@ -80,7 +80,58 @@
                     "default": "line-thin",
                     "description": "Shape of the cursor when selection is active in normal mode."
                 },
-                "modalex.insertKeyamps": {
+                "modalex.insertKeymaps": {
+                    "type": "object",
+                    "default": {},
+                    "patternProperties": {
+                        "^.([\\-,].)*$": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "description": "VSCode command"
+                                },
+                                {
+                                    "type": "array",
+                                    "description": "Sequence of commands",
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "description": "Action"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "description": "VSCode command"
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "type": "object",
+                                    "description": "keymap or VSCode command with arguments",
+                                    "properties": {
+                                        "command": {
+                                            "type": "string",
+                                            "description": "VSCode command"
+                                        },
+                                        "args": {
+                                            "description": "Command arguments",
+                                            "anyOf": [
+                                                {
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "modalex.normalKeymaps": {
                     "type": "object",
                     "default": {},
                     "patternProperties": {
@@ -131,58 +182,7 @@
                         }
                     }
                 },
-                "modalex.normalKeyamps": {
-                    "type": "object",
-                    "default": {},
-                    "patternProperties": {
-                        "^.([\\-,].)*$": {
-                            "anyOf": [
-                                {
-                                    "type": "string",
-                                    "description": "VSCode command"
-                                },
-                                {
-                                    "type": "array",
-                                    "description": "Sequence of commands",
-                                    "items": {
-                                        "anyOf": [
-                                            {
-                                                "type": "object",
-                                                "description": "Action"
-                                            },
-                                            {
-                                                "type": "string",
-                                                "description": "VSCode command"
-                                            }
-                                        ]
-                                    }
-                                },
-                                {
-                                    "type": "object",
-                                    "description": "VSCode command with arguments",
-                                    "properties": {
-                                        "command": {
-                                            "type": "string",
-                                            "description": "VSCode command"
-                                        },
-                                        "args": {
-                                            "description": "Command arguments",
-                                            "anyOf": [
-                                                {
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "type": "string"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                },
-                "modalex.visualKeyamps": {
+                "modalex.visualKeymaps": {
                     "type": "object",
                     "default": {},
                     "patternProperties": {
