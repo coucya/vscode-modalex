@@ -185,6 +185,7 @@ function doDidChangeActiveTextEditor(e: vscode.TextEditor | undefined) {
         extension?.setCurrentEditor(null);
     }
 }
+
 function doDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor[]) {
     if (!extension) return;
 
