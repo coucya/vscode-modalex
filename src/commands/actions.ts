@@ -1,11 +1,14 @@
 import * as vscode from "vscode";
 
 import { extensionName, getExtension } from "../extension";
+import { ModalType } from "../modalEditor";
 
 const commandPrefix = `${extensionName}.action`;
 const pasteId = `${commandPrefix}.paste`;
 const transformToUppercaseId = `${commandPrefix}.transformToUppercase`;
 const transformToLowercaseId = `${commandPrefix}.transformToLowercase`;
+const cursorUpId = `${commandPrefix}.cursorUp`;
+const cursorDownId = `${commandPrefix}.cursorDown`;
 
 async function _paste(args?: { before?: boolean; }) {
     let editor = vscode.window.activeTextEditor;
@@ -83,11 +86,60 @@ function _transformTo(upper: boolean) {
     }
 }
 
+enum CursorMoveDir {
+    up = 1,
+    down = 2,
+    left = 3,
+    right = 4,
+}
+
+function translatePos(pos: vscode.Position, n: number): vscode.Position {
+    if (pos.line + n < 0)
+        return new vscode.Position(0, pos.character);
+    else
+        return new vscode.Position(pos.line + n, pos.character);
+}
+function translate(selection: vscode.Selection, n: number) {
+    let anchor = translatePos(selection.anchor, n);
+    let active = translatePos(selection.active, n);
+    return new vscode.Selection(anchor, active);
+}
+
+function _cursorMove(direction: CursorMoveDir) {
+    let ext = getExtension();
+    let editor = ext.getCurrentEditor();
+    if (!editor)
+        return;
+
+    let vsEditor = editor.getVSCodeTextEditor();
+    let modal = editor.getCurrentModal();
+
+    if (direction == CursorMoveDir.up) {
+        if (modal.getType() === ModalType.visual) {
+            let newSelections = vsEditor.selections.map(s => translate(s, -1));
+            vsEditor.selections = newSelections;
+        } else {
+            let newSelections = vsEditor.selections.map(s => translate(s, -1));
+            vsEditor.selections = newSelections;
+        }
+    } else if (direction === CursorMoveDir.down) {
+        if (modal.getType() === ModalType.visual) {
+            let newSelections = vsEditor.selections.map(s => translate(s, 1));
+            vsEditor.selections = newSelections;
+        } else {
+            let newSelections = vsEditor.selections.map(s => translate(s, 1));
+            vsEditor.selections = newSelections;
+        }
+    }
+}
+
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(pasteId, _paste),
         vscode.commands.registerCommand(transformToUppercaseId, () => _transformTo(true)),
         vscode.commands.registerCommand(transformToLowercaseId, () => _transformTo(false)),
+        vscode.commands.registerCommand(cursorUpId, () => _cursorMove(CursorMoveDir.up)),
+        vscode.commands.registerCommand(cursorDownId, () => _cursorMove(CursorMoveDir.down)),
     );
 }
 

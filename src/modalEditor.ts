@@ -337,14 +337,26 @@ class Keymap {
     }
 }
 
-class Modal {
-    _name: string;
-    _editor: Editor | null;
+enum ModalType {
+    normal = 1,
+    insert = 2,
+    visual = 3,
+}
 
-    _defaultAction: Action | null;
+function modalTypeToString(type_: ModalType) {
+    switch (type_) {
+        case ModalType.normal: return "normal";
+        case ModalType.insert: return "insert";
+        case ModalType.visual: return "visual";
+        default: throw new Error(`invalid ModalType: ${type_}`);
+    }
+}
+
+class Modal {
+    _type: ModalType;
+    _editor: Editor;
+
     _timeout: number | null;
-    _timeoutAction: Action | null;
-    _timeoutErrorCb: ((err: any) => Thenable<void> | void) | null;
 
     _rootKeymap: Keymap;
     _currentKeymap: Keymap | null;
@@ -352,22 +364,13 @@ class Modal {
 
     _timeoutHandle: NodeJS.Timeout | null = null;
 
-    constructor(name: string, option?: {
-        defaultAction?: Action,
+    constructor(type_: ModalType, editor: Editor, option?: {
         timeout?: number,
-        timeoutAction?: Action;
-        timeoutErrorCallback?: ((err: any) => Thenable<void> | void) | null;
     }) {
-        if (typeof name !== "string")
-            throw TypeError("the name of Modal() must be a string");
+        this._type = type_;
+        this._editor = editor;
 
-        this._name = name;
-        this._editor = null;
-
-        this._defaultAction = option?.defaultAction ?? null;
         this._timeout = option?.timeout ?? null;
-        this._timeoutAction = option?.timeoutAction ?? null;
-        this._timeoutErrorCb = option?.timeoutErrorCallback ?? null;
 
         this._rootKeymap = new Keymap();
 
@@ -375,14 +378,10 @@ class Modal {
         this._currentKeySeq = [];
     }
 
-    getName(): string { return this._name; }
+    getType(): ModalType { return this._type; }
     getEditor(): Editor | null { return this._editor; }
 
-    setRootKeymap(keymap: Keymap) {
-        this._rootKeymap = keymap;
-    }
-
-    margeKeymap(keymap: Keymap) {
+    updateKeymap(keymap: Keymap) {
         this._rootKeymap.marge(keymap);
     }
 
@@ -410,15 +409,12 @@ class Modal {
         let keySeq = this._currentKeySeq;
         this._timeoutHandle = null;
         this.reset();
-
-        if (this._timeoutAction) {
-            try {
-                await this._timeoutAction.exec(this, keySeq);
-            } catch (e) {
-                if (this._timeoutErrorCb)
-                    await this._timeoutErrorCb(e);
-            }
-        }
+        if (this._type === ModalType.insert)
+            await this._editor.insertTimeoutAction(keySeq);
+        else if (this._type === ModalType.normal)
+            await this._editor.noramlTimeoutAction(keySeq);
+        else if (this._type === ModalType.visual)
+            await this._editor.visualTimeoutAction(keySeq);
     }
 
     async emitKey(key: string) {
@@ -442,111 +438,113 @@ class Modal {
             let keySeq = this._currentKeySeq;
             this.reset();
             await ac_or_km.exec(this, keySeq);
-        } else if (this._defaultAction) {
+        } else {
             let keySeq = this._currentKeySeq;
             this.reset();
-            await this._defaultAction.exec(this, keySeq);
-        } else {
-            this.reset();
+            await this._editor.defaultTimeoutAction(keySeq);
         }
     }
 }
 
-class Editor extends EventEmitter {
-    _modals: Map<string, Modal>;
-    _currentModal: Modal | null;
-    _execCommandCallback: ((command: string, ...args: any[]) => Thenable<void> | void) | null;
+abstract class Editor extends EventEmitter {
+    // _modals: Map<string, Modal>;
+    _normalModal: Modal;
+    _insertModal: Modal;
+    _visualModal: Modal;
+    _currentModal: Modal;
+    _currentModalType: ModalType;
 
-    constructor(option?: {
-        execCommandCallback?: (command: string, ...args: any[]) => Thenable<void> | void,
-    }) {
+    _insertTimeout: number | null = null;
+
+    constructor() {
         super();
+        this._normalModal = new Modal(ModalType.normal, this);
+        this._visualModal = new Modal(ModalType.visual, this);
+        this._insertModal = new Modal(ModalType.insert, this);
 
-        this._modals = new Map();
-        this._currentModal = null;
-        this._execCommandCallback = option?.execCommandCallback ?? null;
+        this._currentModal = this._normalModal;
+        this._currentModalType = ModalType.normal;
     }
 
-    addModal(modal: Modal) {
-        let name = modal.getName();
-        modal._editor = this;
-        this._modals.set(name, modal);
-    }
+    getCurrentModalType(): ModalType { return this._currentModalType; }
+    getCurrentModal(): Modal { return this._currentModal; }
+    getNormalModal(): Modal { return this._normalModal; }
+    getInsertModal(): Modal { return this._insertModal; }
+    getVisualModal(): Modal { return this._visualModal; }
 
-    getModal(modal: string): Modal | undefined {
-        return this._modals.get(modal);
-    }
-
-    removeModal(modal: Modal | string): Modal | undefined {
-        let name: string;
-        if (modal instanceof Modal)
-            name = modal.getName();
-        else if (typeof modal === "string")
-            name = modal;
-        else
-            return undefined;
-
-        let res = this._modals.get(name);
-        this._modals.delete(name);
-        if (res)
-            res._editor = null;
-
-        return res;
-    }
-
-    removeAllModal() {
-        let modals = [...this._modals.values()];
-        for (var m of modals)
-            this.removeModal(m);
-    }
-
-    getCurrentModal(): Modal | undefined {
-        return this._currentModal ?? undefined;
+    setInsertTimeout(timeout: number | null) {
+        this._insertModal._timeout = timeout;
     }
 
     async _emitkey(key: string) {
-        if (!this._currentModal)
-            throw new ModalRuntimeError("no mode currently selected");
         await this._currentModal.emitKey(key);
     }
 
-    async emitKey(key: string) {
+    async emitKeys(key: string) {
         for (var k of key) {
             await this._emitkey(k);
         }
     }
 
+    clearKeymapsAll() {
+        this._normalModal.clearKeymap();
+        this._insertModal.clearKeymap();
+        this._visualModal.clearKeymap();
+    }
+
     resetCurrent() {
-        if (this._currentModal)
-            this._currentModal.reset();
+        this._currentModal.reset();
     }
 
     resetAll() {
-        for (var m of this._modals.values())
-            m.reset();
+        this._normalModal.reset();
+        this._insertModal.reset();
+        this._visualModal.reset();
     }
 
-    enterMode(modalName: string) {
-        let modal = this._modals.get(modalName);
-        if (modal) {
+    enterMode(modalType: string | ModalType) {
+        let modal: Modal | null = null;
+        let mt: ModalType | null = null;
+        if (typeof modalType === "string") {
+            switch (modalType) {
+                case "normal": mt = ModalType.normal; modal = this._normalModal; break;
+                case "insert": mt = ModalType.insert; modal = this._insertModal; break;
+                case "visual": mt = ModalType.visual; modal = this._visualModal; break;
+                default: modal = null; break;
+            }
+        } else {
+            mt = modalType;
+            switch (modalType) {
+                case ModalType.normal: modal = this._normalModal; break;
+                case ModalType.insert: modal = this._insertModal; break;
+                case ModalType.visual: modal = this._visualModal; break;
+                default: modal = null; break;
+            }
+        }
+
+        if (modal && mt) {
             this.resetAll();
             this._currentModal = modal;
-            this.emit("enterMode", modalName, this);
+            this._currentModalType = mt;
+            this.emit("enterMode", mt, this);
         } else {
-            throw new ModalRuntimeError(`mode "${modalName}" not found`);
+            throw new ModalRuntimeError(`mode "${modalType}" not found`);
         }
     }
 
-    async execCommand(command: string, ...args: any) {
-        if (this._execCommandCallback)
-            await this._execCommandCallback(command, ...args);
-    }
+    execCommand(command: string, ...args: any): Thenable<void> | void { }
+    defaultTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    insertTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    noramlTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    visualTimeoutAction(keySeq: string[]): Thenable<void> | void { }
 }
 
 export {
     ModalRuntimeError,
     ParseKeymapError,
     Keymap,
+    ModalType,
+    modalTypeToString,
     Modal,
     Editor,
     Action,

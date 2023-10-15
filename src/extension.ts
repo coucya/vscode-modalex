@@ -4,6 +4,7 @@ import { EventEmitter } from "events";
 import * as commands from './commands/base';
 import { VSModalEditor } from "./VSEditor";
 import { extensionName, extensionDisplayName } from "./config";
+import { ModalType, modalTypeToString } from './modalEditor';
 
 
 let channel: vscode.OutputChannel | null = null;
@@ -53,7 +54,7 @@ class Extension extends EventEmitter {
 
     async emitKeys(keys: string) {
         if (this._curEditor) {
-            await this._curEditor.emitKey(keys);
+            await this._curEditor.emitKeys(keys);
         }
     }
 
@@ -103,7 +104,7 @@ class Extension extends EventEmitter {
 
     updateStatusBarText(msg?: string) {
         if (this._curEditor) {
-            let mode = this._curEditor.getCurrentModal().getName();
+            let mode = modalTypeToString(this._curEditor.getCurrentModalType());
             let s: string;
             if (msg) {
                 s = `-- ${mode.toUpperCase()} --: ${msg}`;
@@ -130,7 +131,7 @@ class Extension extends EventEmitter {
     }
 
     onNewEditor(editor: vscode.TextEditor) {
-        let modalEditor = new VSModalEditor(editor, { timeoutErrorCallback: timeoutErrorHandle });
+        let modalEditor = new VSModalEditor(editor);
         this._editors.set(editor, modalEditor);
 
         const config = vscode.workspace.getConfiguration(extensionName);
@@ -216,20 +217,16 @@ function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent
     if (!extension) return;
 
     let isSelection = e.selections.some((s) => !s.isEmpty);
+    let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
+    let oldMode = modalEditor?.getCurrentModalType();
 
     if (isSelection) {
-        let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
-        let oldMode = modalEditor?.getCurrentModal()?.getName();
-
-        if (oldMode !== "visual") {
-            modalEditor?.enterMode("visual");
+        if (oldMode !== ModalType.visual) {
+            modalEditor?.enterMode(ModalType.visual);
         }
     } else {
-        let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
-        let oldMode = modalEditor?.getCurrentModal()?.getName();
-
-        if (oldMode !== "insert" && e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
-            modalEditor?.enterMode("insert");
+        if (oldMode !== ModalType.insert && e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+            modalEditor?.enterMode(ModalType.insert);
         }
     }
 }
