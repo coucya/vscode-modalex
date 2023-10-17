@@ -341,6 +341,8 @@ enum ModalType {
     normal = 1,
     insert = 2,
     visual = 3,
+    visualLine = 4,
+    visualBlock = 5,
 }
 
 function modalTypeToString(type_: ModalType) {
@@ -348,6 +350,8 @@ function modalTypeToString(type_: ModalType) {
         case ModalType.normal: return "normal";
         case ModalType.insert: return "insert";
         case ModalType.visual: return "visual";
+        case ModalType.visualLine: return "visual(line)";
+        case ModalType.visualBlock: return "visual(block)";
         default: throw new Error(`invalid ModalType: ${type_}`);
     }
 }
@@ -447,14 +451,12 @@ class Modal {
 }
 
 abstract class Editor extends EventEmitter {
-    // _modals: Map<string, Modal>;
     _normalModal: Modal;
     _insertModal: Modal;
     _visualModal: Modal;
     _currentModal: Modal;
     _currentModalType: ModalType;
 
-    _insertTimeout: number | null = null;
 
     constructor() {
         super();
@@ -502,6 +504,11 @@ abstract class Editor extends EventEmitter {
         this._visualModal.reset();
     }
 
+    isVisual(): boolean {
+        let m = this._currentModalType;
+        return m === ModalType.visual || m === ModalType.visualLine || m === ModalType.visualBlock;
+    }
+
     enterMode(modalType: string | ModalType) {
         let modal: Modal | null = null;
         let mt: ModalType | null = null;
@@ -518,6 +525,8 @@ abstract class Editor extends EventEmitter {
                 case ModalType.normal: modal = this._normalModal; break;
                 case ModalType.insert: modal = this._insertModal; break;
                 case ModalType.visual: modal = this._visualModal; break;
+                case ModalType.visualLine: modal = this._visualModal; break;
+                case ModalType.visualBlock: modal = this._visualModal; break;
                 default: modal = null; break;
             }
         }

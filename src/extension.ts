@@ -221,12 +221,12 @@ function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent
     let oldMode = modalEditor?.getCurrentModalType();
 
     if (isSelection) {
-        if (oldMode !== ModalType.visual) {
+        if (!modalEditor?.isVisual()) {
             modalEditor?.enterMode(ModalType.visual);
         }
     } else {
-        if (oldMode !== ModalType.insert && e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
-            modalEditor?.enterMode(ModalType.insert);
+        if (oldMode !== ModalType.normal && e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+            modalEditor?.enterMode(ModalType.normal);
         }
     }
 }
