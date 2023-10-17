@@ -88,6 +88,13 @@ class VSModalEditor extends Editor {
             this._visualBlockRange = null;
         if (this._currentModalType === ModalType.visualBlock)
             this.setVisualBlockRange(this._vsTextEditor.selection);
+        if (this._currentModalType === ModalType.visualLine) {
+            let base = this._lineAsSelection(this._vsTextEditor.selection.anchor.line);
+            if (base) {
+                this._vsTextEditor.selections = [base];
+            }
+        }
+
     }
 
     execCommand(command: string, ...args: any): Thenable<void> | void {
