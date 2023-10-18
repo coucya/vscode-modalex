@@ -104,8 +104,8 @@ class VSModalEditor extends Editor {
 
     }
 
-    override onExecCommand(command: string, ...args: any): Thenable<void> | void {
-        vscode.commands.executeCommand(command, ...args);
+    override async onExecCommand(command: string, ...args: any) {
+        await vscode.commands.executeCommand(command, ...args);
     }
     override async onInsertDefaultAction(keySeq: string[]) {
         let text = keySeq.join("");
