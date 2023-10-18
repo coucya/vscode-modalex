@@ -36,12 +36,14 @@ class Extension extends EventEmitter {
     _statusBar: vscode.StatusBarItem;
     _editors: Map<vscode.TextEditor, VSModalEditor>;
     _curEditor: VSModalEditor | null;
+    _searchText: string;
 
     constructor() {
         super();
         this._statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         this._editors = new Map();
         this._curEditor = null;
+        this._searchText = "";
     }
 
     destroy() {
@@ -101,6 +103,10 @@ class Extension extends EventEmitter {
         log(`setCurrentEditor: "${this._curEditor?.getVSCodeTextEditor().document.fileName ?? null}"`);
         this.updateStatusBarText();
     }
+
+    getSearchText(): string { return this._searchText; }
+    searchTextAppend(text: string) { this._searchText += text; }
+    searchTextClear() { this._searchText = ""; }
 
     updateStatusBarText(msg?: string) {
         if (this._curEditor) {

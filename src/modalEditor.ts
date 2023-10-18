@@ -430,29 +430,35 @@ class Modal {
     async _doTimeout() {
         let keySeq = this._currentKeySeq;
         this._timeoutHandle = null;
-        this.reset();
-        if (this._type === ModalType.insert)
-            await this._editor.onInsertTimeoutAction(keySeq);
-        else if (this._type === ModalType.normal)
-            await this._editor.onNoramlTimeoutAction(keySeq);
-        else if (this._type === ModalType.visual)
-            await this._editor.onVisualTimeoutAction(keySeq);
-        else if (this._type === ModalType.search)
-            await this._editor.onSearchTimeoutAction(keySeq);
+        try {
+            if (this._type === ModalType.insert)
+                await this._editor.onInsertTimeoutAction(keySeq);
+            else if (this._type === ModalType.normal)
+                await this._editor.onNoramlTimeoutAction(keySeq);
+            else if (this._type === ModalType.visual)
+                await this._editor.onVisualTimeoutAction(keySeq);
+            else if (this._type === ModalType.search)
+                await this._editor.onSearchTimeoutAction(keySeq);
+        } finally {
+            this.reset();
+        }
     }
 
     async _doDefault() {
         let keySeq = this._currentKeySeq;
         this._timeoutHandle = null;
-        this.reset();
-        if (this._type === ModalType.insert)
-            await this._editor.onInsertDefaultAction(keySeq);
-        else if (this._type === ModalType.normal)
-            await this._editor.onNoramlDefaultAction(keySeq);
-        else if (this._type === ModalType.visual)
-            await this._editor.onVisualDefaultAction(keySeq);
-        else if (this._type === ModalType.search)
-            await this._editor.onSearchDefaultAction(keySeq);
+        try {
+            if (this._type === ModalType.insert)
+                await this._editor.onInsertDefaultAction(keySeq);
+            else if (this._type === ModalType.normal)
+                await this._editor.onNoramlDefaultAction(keySeq);
+            else if (this._type === ModalType.visual)
+                await this._editor.onVisualDefaultAction(keySeq);
+            else if (this._type === ModalType.search)
+                await this._editor.onSearchDefaultAction(keySeq);
+        } finally {
+            this.reset();
+        }
     }
 
 
@@ -474,9 +480,12 @@ class Modal {
                 this._timeoutHandle = setTimeout(() => this._doTimeout(), this._timeout);
             }
         } else if (ac_or_km instanceof Action) {
-            let keySeq = this._currentKeySeq;
-            this.reset();
-            await ac_or_km.exec(this, keySeq);
+            try {
+                let keySeq = this._currentKeySeq;
+                await ac_or_km.exec(this, keySeq);
+            } finally {
+                this.reset();
+            }
         } else {
             this._doDefault();
         }
@@ -511,6 +520,7 @@ abstract class Editor extends EventEmitter {
     getNormalModal(): Modal { return this._normalModal; }
     getInsertModal(): Modal { return this._insertModal; }
     getVisualModal(): Modal { return this._visualModal; }
+    getSearchModal(): Modal { return this._searchModal; }
 
     setInsertTimeout(timeout: number | null) {
         this._insertModal._timeout = timeout;
@@ -524,6 +534,10 @@ abstract class Editor extends EventEmitter {
         for (var k of key) {
             await this._emitkey(k);
         }
+    }
+
+    getCurrentKeySeq(): readonly string[] {
+        return this._currentModal._currentKeySeq;
     }
 
     clearKeymapsAll() {

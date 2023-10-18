@@ -150,10 +150,13 @@ class VSModalEditor extends Editor {
         normalKeymaps?: object,
         insertKeymaps?: object;
         visualKeymaps?: object;
+        searchKeymaps?: object;
     }) {
         let normalConfig = config.normalKeymaps ?? {};
         let insertConfig = config.insertKeymaps ?? {};
         let visualConfig = config.visualKeymaps ?? {};
+        let searchConfig = config.searchKeymaps ?? {};
+
 
         if (normalConfig) {
             let keymap = ParseKeymapConfigObj(normalConfig);
@@ -166,6 +169,10 @@ class VSModalEditor extends Editor {
         if (visualConfig) {
             let keymap = ParseKeymapConfigObj(visualConfig);
             this.getVisualModal().updateKeymap(keymap);
+        }
+        if (searchConfig) {
+            let keymap = ParseKeymapConfigObj(searchConfig);
+            this.getSearchModal().updateKeymap(keymap);
         }
     }
 
@@ -184,6 +191,7 @@ class VSModalEditor extends Editor {
         let normalKeymaps = config.get<object>("normalKeymaps");
         let insertKeymaps = config.get<object>("insertKeymaps");
         let visualKeymaps = config.get<object>("visualKeymaps");
+        let searchKeymaps = config.get<object>("searchKeymaps");
         let normalCursorStyle = config.get<string>("normalCursorStyle") ?? "block";
         let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
         let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
@@ -202,7 +210,7 @@ class VSModalEditor extends Editor {
 
         this.clearKeymapsAll();
         this.updateKeymapsFromPreset(preset);
-        this.updateKeymaps({ normalKeymaps, insertKeymaps, visualKeymaps });
+        this.updateKeymaps({ normalKeymaps, insertKeymaps, visualKeymaps, searchKeymaps });
     }
 
     _visualBlockRange: { beg: number, end: number; } | null = null;
@@ -372,6 +380,30 @@ class VSModalEditor extends Editor {
     }
 
     onSelectionChange() {
+    }
+
+    prevMatch(text: string, pos?: vscode.Position, range?: vscode.Range) {
+        let doc = this._vsTextEditor.document;
+        let start = new vscode.Position(0, 0);
+        let end = pos ?? doc.lineAt(doc.lineCount - 1).range.end;
+
+        let docText = doc.getText(new vscode.Range(start, end));
+        let matchPos = docText.lastIndexOf(text);
+        if (matchPos < 0)
+            return undefined;
+        return doc.positionAt(matchPos);
+    }
+    nextMatch(text: string, pos?: vscode.Position, range?: vscode.Range) {
+        let doc = this._vsTextEditor.document;
+        let start = pos ? new vscode.Position(pos.line, pos.character + 1) : new vscode.Position(0, 0);
+        let end = doc.lineAt(doc.lineCount - 1).range.end;
+
+        let docText = doc.getText(new vscode.Range(start, end));
+        let matchPos = docText.indexOf(text);
+        if (matchPos < 0)
+            return undefined;
+        matchPos = doc.offsetAt(start) + matchPos;
+        return doc.positionAt(matchPos);
     }
 }
 
