@@ -371,6 +371,7 @@ function modalTypeToString(type_: ModalType) {
         case ModalType.normal: return "normal";
         case ModalType.insert: return "insert";
         case ModalType.visual: return "visual";
+        case ModalType.search: return "search";
         default: throw new Error(`invalid ModalType: ${type_}`);
     }
 }
@@ -486,6 +487,7 @@ abstract class Editor extends EventEmitter {
     _normalModal: Modal;
     _insertModal: Modal;
     _visualModal: Modal;
+    _searchModal: Modal;
 
     _currentModal: Modal;
     _currentModalType: ModalType;
@@ -498,6 +500,7 @@ abstract class Editor extends EventEmitter {
         this._normalModal = new Modal(ModalType.normal, this);
         this._visualModal = new Modal(ModalType.visual, this);
         this._insertModal = new Modal(ModalType.insert, this);
+        this._searchModal = new Modal(ModalType.search, this);
 
         this._currentModal = this._normalModal;
         this._currentModalType = ModalType.normal;
@@ -561,6 +564,7 @@ abstract class Editor extends EventEmitter {
                 case "normal": type_ = ModalType.normal; modal = this._normalModal; break;
                 case "insert": type_ = ModalType.insert; modal = this._insertModal; break;
                 case "visual": type_ = ModalType.visual; modal = this._visualModal; break;
+                case "search": type_ = ModalType.search; modal = this._searchModal; break;
                 default: modal = null; break;
             }
         } else {
@@ -569,6 +573,7 @@ abstract class Editor extends EventEmitter {
                 case ModalType.normal: modal = this._normalModal; break;
                 case ModalType.insert: modal = this._insertModal; break;
                 case ModalType.visual: modal = this._visualModal; break;
+                case ModalType.search: modal = this._searchModal; break;
                 default: modal = null; break;
             }
         }

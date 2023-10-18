@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 
 import { extensionName, getExtension } from "../extension";
 import { VSModalEditor, CursorMoveDir } from "../VSEditor";
+import { ModalType } from "../modalEditor";
 
 const commandPrefix = `${extensionName}.action`;
 const pasteId = `${commandPrefix}.paste`;
@@ -12,7 +13,7 @@ const cursorDownId = `${commandPrefix}.cursorDown`;
 const cursorLeftId = `${commandPrefix}.cursorLeft`;
 const cursorRightId = `${commandPrefix}.cursorRight`;
 
-async function _paste(args?: { before?: boolean; }) {
+async function _paste(args?: { before?: boolean; enterNormal?: boolean; }) {
     let editor = vscode.window.activeTextEditor;
     if (!editor)
         return;
@@ -45,7 +46,6 @@ async function _paste(args?: { before?: boolean; }) {
         });
         if (editor)
             editor.selections = newSelections;
-
     } else {
         await editor.edit((builder) => {
             for (var selection of selections) {
@@ -56,6 +56,10 @@ async function _paste(args?: { before?: boolean; }) {
                 }
             }
         });
+    }
+
+    if (args?.enterNormal) {
+        getExtension().getCurrentEditor()?.enterMode(ModalType.normal);
     }
 }
 

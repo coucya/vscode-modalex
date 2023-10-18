@@ -1,13 +1,15 @@
 import * as vscode from "vscode";
 
 import { extensionName, getExtension } from "../extension";
-import { ModalType, VisualType } from "../modalEditor";
+import { ModalType, SearchDirection, SearchRange, VisualType } from "../modalEditor";
 
 const enterNormalId = `${extensionName}.enterNormal`;
 const enterInsertId = `${extensionName}.enterInsert`;
 const enterVisualId = `${extensionName}.enterVisual`;
 const enterVisualLineId = `${extensionName}.enterVisualLine`;
 const enterVisualBlockId = `${extensionName}.enterVisualBlock`;
+const enterSearchLineBeforeId = `${extensionName}.enterSearchLineBefore`;
+const enterSearchLineAfterId = `${extensionName}.enterSearchLineAfter`;
 
 function isAtLineEnd(): boolean {
     let editor = vscode.window.activeTextEditor;
@@ -60,6 +62,18 @@ function _enterVisualBlock() {
         editor.enterMode(ModalType.visual, { visualType: VisualType.block });
     }
 }
+function _enterSearchLineBefore() {
+    let editor = getExtension().getCurrentEditor();
+    if (editor) {
+        editor.enterMode(ModalType.search, { searchRange: SearchRange.line, searchDirection: SearchDirection.before });
+    }
+}
+function _enterSearchLineAfter() {
+    let editor = getExtension().getCurrentEditor();
+    if (editor) {
+        editor.enterMode(ModalType.search, { searchRange: SearchRange.line, searchDirection: SearchDirection.after });
+    }
+}
 
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
@@ -68,6 +82,8 @@ function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(enterVisualId, _enterVisual),
         vscode.commands.registerCommand(enterVisualLineId, _enterVisualLine),
         vscode.commands.registerCommand(enterVisualBlockId, _enterVisualBlock),
+        vscode.commands.registerCommand(enterSearchLineBeforeId, _enterSearchLineBefore),
+        vscode.commands.registerCommand(enterSearchLineAfterId, _enterSearchLineAfter),
     );
 }
 
