@@ -264,7 +264,7 @@ class CommandAction extends Action {
     async exec(modal: Modal, keySeq: string[]) {
         let editor = modal.getEditor();
         if (editor) {
-            await editor.execCommand(this.command, this.args);
+            await editor.onExecCommand(this.command, this.args);
         }
     }
 }
@@ -341,8 +341,29 @@ enum ModalType {
     normal = 1,
     insert = 2,
     visual = 3,
-    visualLine = 4,
-    visualBlock = 5,
+    search = 4,
+}
+enum VisualType {
+    normal = 1,
+    line = 2,
+    block = 3,
+}
+enum SearchDirection {
+    before = 1,
+    after = 2,
+    start = 3,
+    reverse = 4,
+}
+enum SearchRange {
+    line = 1,
+    document = 2,
+}
+
+function isVisualType(t: VisualType | SearchDirection | undefined): t is VisualType {
+    return t === VisualType.normal || t === VisualType.line || t === VisualType.block;
+}
+function isSearchDirection(t: VisualType | SearchDirection | undefined): t is SearchDirection {
+    return t === SearchDirection.before || t === SearchDirection.after || t === SearchDirection.start || t === SearchDirection.reverse;
 }
 
 function modalTypeToString(type_: ModalType) {
@@ -350,8 +371,6 @@ function modalTypeToString(type_: ModalType) {
         case ModalType.normal: return "normal";
         case ModalType.insert: return "insert";
         case ModalType.visual: return "visual";
-        case ModalType.visualLine: return "visual(line)";
-        case ModalType.visualBlock: return "visual(block)";
         default: throw new Error(`invalid ModalType: ${type_}`);
     }
 }
@@ -390,10 +409,8 @@ class Modal {
     }
 
     clearKeymap() {
+        this.reset();
         this._rootKeymap.clear();
-        this._currentKeymap = null;
-        this._currentKeySeq = [];
-        this._clearTimeout();
     }
 
     reset() {
@@ -414,12 +431,29 @@ class Modal {
         this._timeoutHandle = null;
         this.reset();
         if (this._type === ModalType.insert)
-            await this._editor.insertTimeoutAction(keySeq);
+            await this._editor.onInsertTimeoutAction(keySeq);
         else if (this._type === ModalType.normal)
-            await this._editor.noramlTimeoutAction(keySeq);
+            await this._editor.onNoramlTimeoutAction(keySeq);
         else if (this._type === ModalType.visual)
-            await this._editor.visualTimeoutAction(keySeq);
+            await this._editor.onVisualTimeoutAction(keySeq);
+        else if (this._type === ModalType.search)
+            await this._editor.onSearchTimeoutAction(keySeq);
     }
+
+    async _doDefault() {
+        let keySeq = this._currentKeySeq;
+        this._timeoutHandle = null;
+        this.reset();
+        if (this._type === ModalType.insert)
+            await this._editor.onInsertDefaultAction(keySeq);
+        else if (this._type === ModalType.normal)
+            await this._editor.onNoramlDefaultAction(keySeq);
+        else if (this._type === ModalType.visual)
+            await this._editor.onVisualDefaultAction(keySeq);
+        else if (this._type === ModalType.search)
+            await this._editor.onSearchDefaultAction(keySeq);
+    }
+
 
     async emitKey(key: string) {
         this._clearTimeout();
@@ -443,9 +477,7 @@ class Modal {
             this.reset();
             await ac_or_km.exec(this, keySeq);
         } else {
-            let keySeq = this._currentKeySeq;
-            this.reset();
-            await this._editor.defaultTimeoutAction(keySeq);
+            this._doDefault();
         }
     }
 }
@@ -454,9 +486,12 @@ abstract class Editor extends EventEmitter {
     _normalModal: Modal;
     _insertModal: Modal;
     _visualModal: Modal;
+
     _currentModal: Modal;
     _currentModalType: ModalType;
-
+    _visualType: VisualType = VisualType.normal;
+    _searchDirection: SearchDirection = SearchDirection.after;
+    _searchRange: SearchRange = SearchRange.document;
 
     constructor() {
         super();
@@ -504,48 +539,67 @@ abstract class Editor extends EventEmitter {
         this._visualModal.reset();
     }
 
-    isVisual(): boolean {
-        let m = this._currentModalType;
-        return m === ModalType.visual || m === ModalType.visualLine || m === ModalType.visualBlock;
+    isNormal() { return this._currentModalType === ModalType.normal; }
+    isInsert() { return this._currentModalType === ModalType.insert; }
+    isVisual(visualType?: VisualType) {
+        return this._currentModalType === ModalType.visual && (visualType === undefined || this._visualType === visualType);
+    }
+    isSearch(searchDirection?: SearchDirection, searchRange?: SearchRange) {
+        return this._currentModalType === ModalType.search
+            && (searchDirection === undefined || this._searchDirection === searchDirection)
+            && (searchRange === undefined || this._searchRange === searchRange);
     }
 
-    enterMode(modalType: string | ModalType) {
+    enterMode(
+        modalType: string | ModalType,
+        option?: { visualType?: VisualType, searchDirection?: SearchDirection, searchRange?: SearchRange; }
+    ) {
         let modal: Modal | null = null;
-        let mt: ModalType | null = null;
+        let type_: ModalType | null = null;
         if (typeof modalType === "string") {
             switch (modalType) {
-                case "normal": mt = ModalType.normal; modal = this._normalModal; break;
-                case "insert": mt = ModalType.insert; modal = this._insertModal; break;
-                case "visual": mt = ModalType.visual; modal = this._visualModal; break;
+                case "normal": type_ = ModalType.normal; modal = this._normalModal; break;
+                case "insert": type_ = ModalType.insert; modal = this._insertModal; break;
+                case "visual": type_ = ModalType.visual; modal = this._visualModal; break;
                 default: modal = null; break;
             }
         } else {
-            mt = modalType;
+            type_ = modalType;
             switch (modalType) {
                 case ModalType.normal: modal = this._normalModal; break;
                 case ModalType.insert: modal = this._insertModal; break;
                 case ModalType.visual: modal = this._visualModal; break;
-                case ModalType.visualLine: modal = this._visualModal; break;
-                case ModalType.visualBlock: modal = this._visualModal; break;
                 default: modal = null; break;
             }
         }
 
-        if (modal && mt) {
+        let visualType: VisualType = option?.visualType ?? VisualType.normal;
+        let searchDirection: SearchDirection = option?.searchDirection ?? SearchDirection.after;
+        let searchRange: SearchRange = option?.searchRange ?? SearchRange.document;
+
+        if (modal && type_) {
+            this._visualType = visualType;
+            this._searchDirection = searchDirection;
+            this._searchRange = searchRange;
+
             this.resetAll();
             this._currentModal = modal;
-            this._currentModalType = mt;
-            this.emit("enterMode", mt, this);
+            this._currentModalType = type_;
+            this.emit("enterMode", type_, this);
         } else {
             throw new ModalRuntimeError(`mode "${modalType}" not found`);
         }
     }
 
-    execCommand(command: string, ...args: any): Thenable<void> | void { }
-    defaultTimeoutAction(keySeq: string[]): Thenable<void> | void { }
-    insertTimeoutAction(keySeq: string[]): Thenable<void> | void { }
-    noramlTimeoutAction(keySeq: string[]): Thenable<void> | void { }
-    visualTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    onExecCommand(command: string, ...args: any): Thenable<void> | void { }
+    onInsertDefaultAction(keySeq: string[]): Thenable<void> | void { }
+    onNoramlDefaultAction(keySeq: string[]): Thenable<void> | void { }
+    onVisualDefaultAction(keySeq: string[]): Thenable<void> | void { }
+    onSearchDefaultAction(keySeq: string[]): Thenable<void> | void { }
+    onInsertTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    onNoramlTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    onVisualTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    onSearchTimeoutAction(keySeq: string[]): Thenable<void> | void { }
 }
 
 export {
@@ -553,6 +607,9 @@ export {
     ParseKeymapError,
     Keymap,
     ModalType,
+    VisualType,
+    SearchDirection,
+    SearchRange,
     modalTypeToString,
     Modal,
     Editor,

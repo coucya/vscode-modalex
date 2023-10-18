@@ -4,6 +4,9 @@ import {
     Keymap,
     Modal,
     ModalType,
+    VisualType,
+    SearchDirection,
+    SearchRange,
     Editor,
     Action,
     FunctionAction,
@@ -69,10 +72,8 @@ class VSModalEditor extends Editor {
             [ModalType.normal]: vscode.TextEditorCursorStyle.Block,
             [ModalType.insert]: vscode.TextEditorCursorStyle.Line,
             [ModalType.visual]: vscode.TextEditorCursorStyle.LineThin,
-            [ModalType.visualLine]: vscode.TextEditorCursorStyle.LineThin,
-            [ModalType.visualBlock]: vscode.TextEditorCursorStyle.LineThin,
+            [ModalType.search]: vscode.TextEditorCursorStyle.Underline,
         };
-
 
         this.addListener("enterMode", async () => await this._onEnterMode());
     }
@@ -82,13 +83,19 @@ class VSModalEditor extends Editor {
         this._vsTextEditor.options.cursorStyle = this._oldCursorStyle;
     }
 
-    enterMode(modalType: string | ModalType): void {
-        super.enterMode(modalType);
+    override enterMode(modalType: string | ModalType, options?: {
+        visualType?: VisualType | undefined;
+        searchDirection?: SearchDirection | undefined;
+        searchRange?: SearchRange | undefined;
+    }): void {
+        super.enterMode(modalType, options);
+        if (this.isNormal() || this.isInsert())
+            this._clearSelection();
         if (!this.isVisual())
             this._visualBlockRange = null;
-        if (this._currentModalType === ModalType.visualBlock)
+        if (this.isVisual(VisualType.block))
             this.setVisualBlockRange(this._vsTextEditor.selection);
-        if (this._currentModalType === ModalType.visualLine) {
+        if (this.isVisual(VisualType.line)) {
             let base = this._lineAsSelection(this._vsTextEditor.selection.anchor.line);
             if (base) {
                 this._vsTextEditor.selections = [base];
@@ -97,19 +104,19 @@ class VSModalEditor extends Editor {
 
     }
 
-    execCommand(command: string, ...args: any): Thenable<void> | void {
+    override onExecCommand(command: string, ...args: any): Thenable<void> | void {
         vscode.commands.executeCommand(command, ...args);
     }
-    async defaultTimeoutAction(keySeq: string[]) {
+    override async onInsertDefaultAction(keySeq: string[]) {
         let text = keySeq.join("");
         await vscode.commands.executeCommand('default:type', { text });
     }
-    async insertTimeoutAction(keySeq: string[]) {
+    override async onInsertTimeoutAction(keySeq: string[]) {
         let text = keySeq.join("");
         await vscode.commands.executeCommand('default:type', { text });
     }
-    noramlTimeoutAction(keySeq: string[]): Thenable<void> | void { }
-    visualTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    override  onNoramlTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+    override  onVisualTimeoutAction(keySeq: string[]): Thenable<void> | void { }
 
     getVSCodeTextEditor(): vscode.TextEditor {
         return this._vsTextEditor;
@@ -124,7 +131,9 @@ class VSModalEditor extends Editor {
     }
 
     async _clearSelection() {
-        await vscode.commands.executeCommand("cancelSelection");
+        let s = this._vsTextEditor.selection;
+        let newSelections = [new vscode.Selection(s.anchor, s.anchor)];
+        this._vsTextEditor.selections = newSelections;
     }
 
     setCursorStyle(styles: StyleTable) {
@@ -178,6 +187,7 @@ class VSModalEditor extends Editor {
         let normalCursorStyle = config.get<string>("normalCursorStyle") ?? "block";
         let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
         let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
+        let searchCursorStyle = config.get<string>("searchCursorStyle") ?? "underline";
 
         insertTimeout = insertTimeout && insertTimeout >= 0 ? insertTimeout : null;
         this.setInsertTimeout(insertTimeout);
@@ -186,8 +196,7 @@ class VSModalEditor extends Editor {
             [ModalType.normal]: toVSCodeCursorStyle(normalCursorStyle),
             [ModalType.insert]: toVSCodeCursorStyle(insertCursorStyle),
             [ModalType.visual]: toVSCodeCursorStyle(visualCursorStyle),
-            [ModalType.visualLine]: toVSCodeCursorStyle(visualCursorStyle),
-            [ModalType.visualBlock]: toVSCodeCursorStyle(visualCursorStyle),
+            [ModalType.search]: toVSCodeCursorStyle(searchCursorStyle),
         };
         this.setCursorStyle(styles);
 
@@ -216,12 +225,12 @@ class VSModalEditor extends Editor {
         if (line < 0 || line >= document.lineCount)
             return undefined;
 
-        if (this._currentModalType === ModalType.visualBlock) {
+        if (this._visualType === VisualType.block) {
             let bRange = this._visualBlockRange ? this._visualBlockRange : this._rangeTo(this._vsTextEditor.selection);
             let s = new vscode.Position(line, bRange.beg);
             let e = new vscode.Position(line, bRange.end);
             return new vscode.Selection(s, e);
-        } else if (this._currentModalType === ModalType.visualLine) {
+        } else if (this._visualType === VisualType.line) {
             let range = document.lineAt(line).range;
             return new vscode.Selection(range.start, range.end);
         } else {
@@ -249,9 +258,9 @@ class VSModalEditor extends Editor {
     _cursorUp() {
         if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
             vscode.commands.executeCommand("cursorUp");
-        } else if (this._currentModalType === ModalType.visual) {
+        } else if (this.isVisual(VisualType.normal)) {
             vscode.commands.executeCommand("cursorUpSelect");
-        } else if (this._currentModalType === ModalType.visualLine || this._currentModalType === ModalType.visualBlock) {
+        } else if (this.isVisual(VisualType.line) || this.isVisual(VisualType.block)) {
             let selection = this._vsTextEditor.selection;
             let selections = this._vsTextEditor.selections;
 
@@ -272,9 +281,9 @@ class VSModalEditor extends Editor {
     _cursorDown() {
         if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
             vscode.commands.executeCommand("cursorDown");
-        } else if (this._currentModalType === ModalType.visual) {
+        } else if (this.isVisual(VisualType.normal)) {
             vscode.commands.executeCommand("cursorDownSelect");
-        } else if (this._currentModalType === ModalType.visualLine || this._currentModalType === ModalType.visualBlock) {
+        } else if (this.isVisual(VisualType.line) || this.isVisual(VisualType.block)) {
             let selection = this._vsTextEditor.selection;
             let selections = this._vsTextEditor.selections;
 
@@ -300,14 +309,14 @@ class VSModalEditor extends Editor {
                 return translate(s, -1, 0, false, this._widthOfLine(s.anchor.line));
             });
             this._vsTextEditor.selections = newSelections;
-        } else if (this._currentModalType === ModalType.visual) {
+        } else if (this.isVisual(VisualType.normal)) {
             let newSelections = this._vsTextEditor.selections.map((s) => {
                 return translate(s, -1, 0, true, this._widthOfLine(s.anchor.line));
             });
             this._vsTextEditor.selections = newSelections;
-        } else if (this._currentModalType === ModalType.visualLine) {
+        } else if (this.isVisual(VisualType.line)) {
             // nothing
-        } else if (this._currentModalType === ModalType.visualBlock) {
+        } else if (this.isVisual(VisualType.block)) {
             let newSelections = this._vsTextEditor.selections.map((s) => {
                 return translate(s, -1, 0, true);
             });
@@ -333,9 +342,9 @@ class VSModalEditor extends Editor {
                 return translate(s, 1, 0, true, this._widthOfLine(s.anchor.line));
             });
             this._vsTextEditor.selections = newSelections;
-        } else if (this._currentModalType === ModalType.visualLine) {
+        } else if (this.isVisual(VisualType.line)) {
             // nothing
-        } else if (this._currentModalType === ModalType.visualBlock) {
+        } else if (this.isVisual(VisualType.block)) {
             let newSelections = this._vsTextEditor.selections.map((s) => {
                 return translate(s, 1, 0, true);
             });

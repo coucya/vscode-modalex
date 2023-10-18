@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import { extensionName, getExtension } from "../extension";
-import { ModalType } from "../modalEditor";
+import { ModalType, VisualType } from "../modalEditor";
 
 const enterNormalId = `${extensionName}.enterNormal`;
 const enterInsertId = `${extensionName}.enterInsert`;
@@ -51,13 +51,13 @@ function _enterVisual() {
 function _enterVisualLine() {
     let editor = getExtension().getCurrentEditor();
     if (editor) {
-        editor.enterMode(ModalType.visualLine);
+        editor.enterMode(ModalType.visual, { visualType: VisualType.line });
     }
 }
 function _enterVisualBlock() {
     let editor = getExtension().getCurrentEditor();
     if (editor) {
-        editor.enterMode(ModalType.visualBlock);
+        editor.enterMode(ModalType.visual, { visualType: VisualType.block });
     }
 }
 
