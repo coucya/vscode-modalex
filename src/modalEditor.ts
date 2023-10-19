@@ -501,8 +501,6 @@ abstract class Editor extends EventEmitter {
     _currentModal: Modal;
     _currentModalType: ModalType;
     _visualType: VisualType = VisualType.normal;
-    _searchDirection: SearchDirection = SearchDirection.after;
-    _searchRange: SearchRange = SearchRange.document;
 
     constructor() {
         super();
@@ -561,15 +559,13 @@ abstract class Editor extends EventEmitter {
     isVisual(visualType?: VisualType) {
         return this._currentModalType === ModalType.visual && (visualType === undefined || this._visualType === visualType);
     }
-    isSearch(searchDirection?: SearchDirection, searchRange?: SearchRange) {
-        return this._currentModalType === ModalType.search
-            && (searchDirection === undefined || this._searchDirection === searchDirection)
-            && (searchRange === undefined || this._searchRange === searchRange);
+    isSearch() {
+        return this._currentModalType === ModalType.search;
     }
 
     enterMode(
         modalType: string | ModalType,
-        option?: { visualType?: VisualType, searchDirection?: SearchDirection, searchRange?: SearchRange; }
+        option?: { visualType?: VisualType; }
     ) {
         let modal: Modal | null = null;
         let type_: ModalType | null = null;
@@ -593,13 +589,9 @@ abstract class Editor extends EventEmitter {
         }
 
         let visualType: VisualType = option?.visualType ?? VisualType.normal;
-        let searchDirection: SearchDirection = option?.searchDirection ?? SearchDirection.after;
-        let searchRange: SearchRange = option?.searchRange ?? SearchRange.document;
 
         if (modal && type_) {
             this._visualType = visualType;
-            this._searchDirection = searchDirection;
-            this._searchRange = searchRange;
 
             this.resetAll();
             this._currentModal = modal;

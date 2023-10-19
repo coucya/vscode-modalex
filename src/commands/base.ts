@@ -98,15 +98,16 @@ function _searchNext() {
     if (!editor)
         return;
 
-    let pos = editor.getVSCodeTextEditor().selection.anchor;
     let text = ext.getSearchText();
     if (!text || text === "")
         return;
 
-    let nextPos = editor.nextMatch(text, pos);
+    let nextPos = editor.nextMatchFromCursor(text);
     if (!nextPos)
         return;
-    editor.getVSCodeTextEditor().selection = new vscode.Selection(nextPos, nextPos);
+    let vsEditor = editor.getVSCodeTextEditor();
+    vsEditor.selection = new vscode.Selection(nextPos, nextPos);
+    vsEditor.revealRange(vsEditor.selection);
 }
 
 function registerCommands(context: vscode.ExtensionContext) {

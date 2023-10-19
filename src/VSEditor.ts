@@ -382,28 +382,100 @@ class VSModalEditor extends Editor {
     onSelectionChange() {
     }
 
-    prevMatch(text: string, pos?: vscode.Position, range?: vscode.Range) {
-        let doc = this._vsTextEditor.document;
-        let start = new vscode.Position(0, 0);
-        let end = pos ?? doc.lineAt(doc.lineCount - 1).range.end;
 
-        let docText = doc.getText(new vscode.Range(start, end));
-        let matchPos = docText.lastIndexOf(text);
+
+    _getLineRange(at: vscode.Position | number, after?: boolean) {
+        let editor = this._vsTextEditor;
+        let doc = editor.document;
+        let lineNumber = typeof at === 'number' ? at : at.line;
+        if (lineNumber >= doc.lineCount)
+            return undefined;
+
+        let lineRange = doc.lineAt(lineNumber).range;
+        if (after === true && typeof at !== 'number') {
+            return new vscode.Range(lineRange.start, at);
+        } else if (after === false && typeof at !== 'number') {
+            return new vscode.Range(at, lineRange.end);
+        } else {
+            return lineRange;
+        }
+    }
+
+    _getDocumentRange(at?: vscode.Position, after: boolean = true) {
+        let editor = this._vsTextEditor;
+        let doc = editor.document;
+        if (at && !after) {
+            let start = new vscode.Position(0, 0);
+            let end = at;
+            return doc.validateRange(new vscode.Range(start, end));
+        } else if (at && after) {
+            let start = at;
+            let end = doc.lineAt(doc.lineCount - 1).range.end;
+            return doc.validateRange(new vscode.Range(start, end));
+        } else {
+            let start = new vscode.Position(0, 0);
+            let end = new vscode.Position(doc.lineCount, 0);
+            return doc.validateRange(new vscode.Range(start, end));
+        }
+    }
+
+    _getSearchRange(searchRange: SearchRange, searchDirection: SearchDirection, incaludingCursor: boolean = true) {
+        let editor = this._vsTextEditor;
+
+        if (searchRange === SearchRange.line) {
+            if (searchDirection === SearchDirection.before) {
+                let at = editor.selection.active;
+                return this._getLineRange(at, false);
+            } else if (searchDirection === SearchDirection.after) {
+                let at = incaludingCursor ? editor.selection.active : editor.selection.active.translate(0, 1);
+                return this._getLineRange(at, true);
+            } else if (searchDirection === SearchDirection.start || searchDirection === SearchDirection.reverse) {
+                let line = editor.selection.active.line;
+                return this._getLineRange(line);
+            } else {
+                return undefined;
+            }
+        } else if (searchRange === SearchRange.document) {
+            if (searchDirection === SearchDirection.before) {
+                let at = editor.selection.active;
+                return this._getDocumentRange(at, false);
+            } else if (searchDirection === SearchDirection.after) {
+                let at = incaludingCursor ? editor.selection.active : editor.selection.active.translate(0, 1);
+                return this._getDocumentRange(at, true);
+            } else if (searchDirection === SearchDirection.start || searchDirection === SearchDirection.reverse) {
+                return this._getDocumentRange();
+            } else {
+                return undefined;
+            }
+        } else {
+            return undefined;
+        }
+    }
+
+    _nextMatch(text: string, range: vscode.Range, reverse: boolean = false) {
+        let doc = this._vsTextEditor.document;
+        let searchRange = doc.validateRange(range);
+        let docText = doc.getText(searchRange);
+        let matchPos = !reverse ? docText.indexOf(text) : docText.lastIndexOf(text);
         if (matchPos < 0)
             return undefined;
+        matchPos = doc.offsetAt(searchRange.start) + matchPos;
         return doc.positionAt(matchPos);
     }
-    nextMatch(text: string, pos?: vscode.Position, range?: vscode.Range) {
-        let doc = this._vsTextEditor.document;
-        let start = pos ? new vscode.Position(pos.line, pos.character + 1) : new vscode.Position(0, 0);
-        let end = doc.lineAt(doc.lineCount - 1).range.end;
 
-        let docText = doc.getText(new vscode.Range(start, end));
-        let matchPos = docText.indexOf(text);
-        if (matchPos < 0)
+    nextMatchFromCursor(text: string, line = false) {
+        let searchRange = line ? SearchRange.line : SearchRange.document;
+        let range = this._getSearchRange(searchRange, SearchDirection.after, false);
+        if (!range)
             return undefined;
-        matchPos = doc.offsetAt(start) + matchPos;
-        return doc.positionAt(matchPos);
+        return this._nextMatch(text, range);
+    }
+    prevMatch(text: string, line = false) {
+        let searchRange = line ? SearchRange.line : SearchRange.document;
+        let range = this._getSearchRange(searchRange, SearchDirection.before);
+        if (!range)
+            return undefined;
+        return this._nextMatch(text, range, true);
     }
 }
 
