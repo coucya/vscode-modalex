@@ -68,7 +68,6 @@ function _enterSearchLineBefore() {
     let ext = getExtension();
     let editor = ext.getCurrentEditor();
 
-    ext.searchTextClear();
     if (editor) {
         editor.enterMode(ModalType.search, { searchRange: SearchRange.line, searchDirection: SearchDirection.before });
     }
@@ -77,14 +76,13 @@ function _enterSearchLineAfter() {
     let ext = getExtension();
     let editor = ext.getCurrentEditor();
 
-    ext.searchTextClear();
     if (editor) {
         editor.enterMode(ModalType.search, { searchRange: SearchRange.line, searchDirection: SearchDirection.after });
     }
 }
 
 function _searchClear() {
-    getExtension().searchTextClear();
+    // getExtension().searchTextClear();
 }
 function _searchAppend() {
     let ext = getExtension();
@@ -92,7 +90,7 @@ function _searchAppend() {
     if (!editor)
         return;
     let keys = editor.getCurrentKeySeq().join("");
-    getExtension().searchTextAppend(keys);
+    // getExtension().searchTextAppend(keys);
 }
 function _searchNext() {
     let ext = getExtension();
@@ -105,6 +103,23 @@ function _searchNext() {
         return;
 
     let nextPos = editor.nextMatchFromCursor(text);
+    if (!nextPos)
+        return;
+    let vsEditor = editor.getVSCodeTextEditor();
+    vsEditor.selection = new vscode.Selection(nextPos, nextPos);
+    vsEditor.revealRange(vsEditor.selection);
+}
+function _searchPrev() {
+    let ext = getExtension();
+    let editor = ext.getCurrentEditor();
+    if (!editor)
+        return;
+
+    let text = ext.getSearchText();
+    if (!text || text === "")
+        return;
+
+    let nextPos = editor.prevMatchFromCursor(text);
     if (!nextPos)
         return;
     let vsEditor = editor.getVSCodeTextEditor();
@@ -124,6 +139,7 @@ function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(`${extensionName}.searchClear`, _searchClear),
         vscode.commands.registerCommand(`${extensionName}.searchAppend`, _searchAppend),
         vscode.commands.registerCommand(`${extensionName}.searchNext`, _searchNext),
+        vscode.commands.registerCommand(`${extensionName}.searchPrev`, _searchPrev),
     );
 }
 

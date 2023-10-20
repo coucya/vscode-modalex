@@ -68,6 +68,13 @@ class VSSearchModal extends SearchModal {
     override onConfirm(): void | Thenable<void> {
         let editor = this.getEditor() as VSModalEditor;
         editor.nextMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
+        setTimeout(() => {
+            editor.enterMode("normal");
+            let nextCursor = editor.nextMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
+            if (nextCursor) {
+                editor.getVSCodeTextEditor().selection = new vscode.Selection(nextCursor, nextCursor);
+            }
+        }, 0);
     }
 }
 
@@ -494,7 +501,7 @@ class VSModalEditor extends Editor {
             return undefined;
         return this._nextMatch(text, range);
     }
-    prevMatch(text: string, line = false) {
+    prevMatchFromCursor(text: string, line = false) {
         let searchRange = line ? SearchRange.line : SearchRange.document;
         let range = this._getSearchRange(searchRange, SearchDirection.before);
         if (!range)

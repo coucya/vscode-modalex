@@ -653,9 +653,14 @@ abstract class Editor extends EventEmitter {
         if (modal && type_) {
             this._visualType = visualType;
 
+            this._currentModal.onLeave();
+
             this.resetAll();
+
             this._currentModal = modal;
             this._currentModalType = type_;
+            modal.onEnter();
+
             this.emit("enterMode", type_, this);
         } else {
             throw new ModalRuntimeError(`mode "${modalType}" not found`);
