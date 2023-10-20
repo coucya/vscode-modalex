@@ -399,8 +399,9 @@ abstract class BaseModal {
 
     reset(): void | Thenable<void> { }
 
-    onEnter(): void | Thenable<void> { }
-    onLeave(): void | Thenable<void> { }
+    onWillEnter(option?: any): void | Thenable<void> { }
+    onDidEnter(): void | Thenable<void> { }
+    onWillLeave(): void | Thenable<void> { }
 
     onKey(key: string): void | Thenable<void> { }
     onTimeout(): void | Thenable<void> { }
@@ -514,12 +515,14 @@ class SearchModal extends BaseModal {
     _text: string;
     _searchRange: SearchRange;
     _searchDirection: SearchDirection;
+    _singleChar: boolean;
 
     constructor(name: string, editor: Editor) {
         super(name, editor);
         this._text = "";
         this._searchRange = SearchRange.document;
         this._searchDirection = SearchDirection.after;
+        this._singleChar = false;
     }
 
     getText(): string { return this._text; }
@@ -531,15 +534,25 @@ class SearchModal extends BaseModal {
     getSearchDirection(): SearchDirection { return this._searchDirection; }
     setSearchDirection(searchDirection: SearchDirection): void { this._searchDirection = searchDirection; }
 
-    override onEnter(): void | Thenable<void> {
+    override onWillEnter(option?: any): void | Thenable<void> {
         this._text = "";
+        if (option && typeof option === "object") {
+            this._searchRange = option?.searchRange ?? SearchRange.document;
+            this._searchDirection = option?.searchDirection ?? SearchDirection.after;
+            this._singleChar = option?.singleChar ?? false;
+        }
     }
 
     override onKey(key: string): void | Thenable<void> {
         if (key === "\n") {
             this.onConfirm();
         } else {
-            this._text += key;
+            if (this._singleChar) {
+                this._text = key;
+                this.onConfirm();
+            } else {
+                this._text += key;
+            }
         }
     }
 
@@ -623,10 +636,7 @@ abstract class Editor extends EventEmitter {
         return this._currentModalType === ModalType.search;
     }
 
-    enterMode(
-        modalType: string | ModalType,
-        option?: { visualType?: VisualType; }
-    ) {
+    enterMode(modalType: string | ModalType, option?: any,) {
         let modal: BaseModal | null = null;
         let type_: ModalType | null = null;
         if (typeof modalType === "string") {
@@ -653,13 +663,15 @@ abstract class Editor extends EventEmitter {
         if (modal && type_) {
             this._visualType = visualType;
 
-            this._currentModal.onLeave();
+            this._currentModal.onWillLeave();
+
+            modal.onWillEnter(option);
 
             this.resetAll();
 
             this._currentModal = modal;
             this._currentModalType = type_;
-            modal.onEnter();
+            modal.onDidEnter();
 
             this.emit("enterMode", type_, this);
         } else {

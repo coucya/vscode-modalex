@@ -3,13 +3,13 @@ import * as vscode from "vscode";
 import { extensionName, getExtension } from "../extension";
 import { ModalType, SearchDirection, SearchRange, VisualType } from "../modalEditor";
 
-const enterNormalId = `${extensionName}.enterNormal`;
-const enterInsertId = `${extensionName}.enterInsert`;
-const enterVisualId = `${extensionName}.enterVisual`;
-const enterVisualLineId = `${extensionName}.enterVisualLine`;
-const enterVisualBlockId = `${extensionName}.enterVisualBlock`;
-const enterSearchLineBeforeId = `${extensionName}.enterSearchLineBefore`;
-const enterSearchLineAfterId = `${extensionName}.enterSearchLineAfter`;
+// const enterNormalId = `${extensionName}.enterNormal`;
+// const enterInsertId = `${extensionName}.enterInsert`;
+// const enterVisualId = `${extensionName}.enterVisual`;
+// const enterVisualLineId = `${extensionName}.enterVisualLine`;
+// const enterVisualBlockId = `${extensionName}.enterVisualBlock`;
+// const enterSearchLineBeforeId = `${extensionName}.enterSearchLineBefore`;
+// const enterSearchLineAfterId = `${extensionName}.enterSearchLineAfter`;
 
 function isAtLineEnd(): boolean {
     let editor = vscode.window.activeTextEditor;
@@ -64,20 +64,26 @@ function _enterVisualBlock() {
         editor.enterMode(ModalType.visual, { visualType: VisualType.block });
     }
 }
-function _enterSearchLineBefore() {
+function _searchCharLineBefore() {
     let ext = getExtension();
     let editor = ext.getCurrentEditor();
-
     if (editor) {
-        editor.enterMode(ModalType.search, { searchRange: SearchRange.line, searchDirection: SearchDirection.before });
+        editor.enterMode(ModalType.search, {
+            searchRange: SearchRange.line,
+            searchDirection: SearchDirection.before,
+            singleChar: true,
+        });
     }
 }
-function _enterSearchLineAfter() {
+function _searchCharLineAfter() {
     let ext = getExtension();
     let editor = ext.getCurrentEditor();
-
     if (editor) {
-        editor.enterMode(ModalType.search, { searchRange: SearchRange.line, searchDirection: SearchDirection.after });
+        editor.enterMode(ModalType.search, {
+            searchRange: SearchRange.line,
+            searchDirection: SearchDirection.after,
+            singleChar: true,
+        });
     }
 }
 
@@ -129,15 +135,13 @@ function _searchPrev() {
 
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
-        vscode.commands.registerCommand(enterNormalId, _enterNormal),
-        vscode.commands.registerCommand(enterInsertId, _enterInsert),
-        vscode.commands.registerCommand(enterVisualId, _enterVisual),
-        vscode.commands.registerCommand(enterVisualLineId, _enterVisualLine),
-        vscode.commands.registerCommand(enterVisualBlockId, _enterVisualBlock),
-        vscode.commands.registerCommand(enterSearchLineBeforeId, _enterSearchLineBefore),
-        vscode.commands.registerCommand(enterSearchLineAfterId, _enterSearchLineAfter),
-        vscode.commands.registerCommand(`${extensionName}.searchClear`, _searchClear),
-        vscode.commands.registerCommand(`${extensionName}.searchAppend`, _searchAppend),
+        vscode.commands.registerCommand(`${extensionName}.enterNormal`, _enterNormal),
+        vscode.commands.registerCommand(`${extensionName}.enterInsert`, _enterInsert),
+        vscode.commands.registerCommand(`${extensionName}.enterVisual`, _enterVisual),
+        vscode.commands.registerCommand(`${extensionName}.enterVisualLine`, _enterVisualLine),
+        vscode.commands.registerCommand(`${extensionName}.enterVisualBlock`, _enterVisualBlock),
+        vscode.commands.registerCommand(`${extensionName}.searchCharLineBefore`, _searchCharLineBefore),
+        vscode.commands.registerCommand(`${extensionName}.searchCharLineAfter`, _searchCharLineAfter),
         vscode.commands.registerCommand(`${extensionName}.searchNext`, _searchNext),
         vscode.commands.registerCommand(`${extensionName}.searchPrev`, _searchPrev),
     );

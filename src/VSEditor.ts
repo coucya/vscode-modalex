@@ -67,10 +67,19 @@ class VSSearchModal extends SearchModal {
 
     override onConfirm(): void | Thenable<void> {
         let editor = this.getEditor() as VSModalEditor;
-        editor.nextMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
+        let dir = this.getSearchDirection();
+
+        let nextCursor: vscode.Position | undefined;
+        if (dir === SearchDirection.after) {
+            nextCursor = editor.nextMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
+        } else if (dir === SearchDirection.before) {
+            nextCursor = editor.prevMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
+        } else {
+            throw new Error(`implementation of SearchDirection(${dir}) has not been completed yet`);
+            // TODO
+        }
         setTimeout(() => {
             editor.enterMode("normal");
-            let nextCursor = editor.nextMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
             if (nextCursor) {
                 editor.getVSCodeTextEditor().selection = new vscode.Selection(nextCursor, nextCursor);
             }
@@ -119,8 +128,6 @@ class VSModalEditor extends Editor {
             [ModalType.visual]: vscode.TextEditorCursorStyle.LineThin,
             [ModalType.search]: vscode.TextEditorCursorStyle.Underline,
         };
-
-        this.addListener("enterMode", async () => await this._onEnterMode());
     }
 
     destroy() {
@@ -128,14 +135,8 @@ class VSModalEditor extends Editor {
         this._vsTextEditor.options.cursorStyle = this._oldCursorStyle;
     }
 
-    override enterMode(modalType: string | ModalType, options?: {
-        visualType?: VisualType | undefined;
-        searchDirection?: SearchDirection | undefined;
-        searchRange?: SearchRange | undefined;
-    }): void {
+    override enterMode(modalType: string | ModalType, options?: any): void {
         super.enterMode(modalType, options);
-        // if (this.isNormal() || this.isInsert())
-        //     this._clearSelection();
         if (!this.isVisual())
             this._visualBlockRange = null;
         if (this.isVisual(VisualType.block))
@@ -146,21 +147,11 @@ class VSModalEditor extends Editor {
                 this._vsTextEditor.selections = [base];
             }
         }
-
+        this.updateCursorStyle();
     }
-
-
 
     getVSCodeTextEditor(): vscode.TextEditor {
         return this._vsTextEditor;
-    }
-
-    async _onEnterMode() {
-        this.updateCursorStyle();
-        if (this._currentModalType === ModalType.normal ||
-            this._currentModalType === ModalType.insert) {
-            await this.clearSelection();
-        }
     }
 
     async clearSelection() {
@@ -424,9 +415,9 @@ class VSModalEditor extends Editor {
 
         let lineRange = doc.lineAt(lineNumber).range;
         if (after === true && typeof at !== 'number') {
-            return new vscode.Range(lineRange.start, at);
-        } else if (after === false && typeof at !== 'number') {
             return new vscode.Range(at, lineRange.end);
+        } else if (after === false && typeof at !== 'number') {
+            return new vscode.Range(lineRange.start, at);
         } else {
             return lineRange;
         }
