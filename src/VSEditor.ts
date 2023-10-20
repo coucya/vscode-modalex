@@ -2,7 +2,9 @@ import * as vscode from 'vscode';
 
 import {
     Keymap,
-    Modal,
+    BaseModal,
+    SearchModal,
+    KeymapModal,
     ModalType,
     VisualType,
     SearchDirection,
@@ -58,6 +60,17 @@ function toVSCodeCursorStyle(style: string): vscode.TextEditorCursorStyle {
     }
 }
 
+class VSSearchModal extends SearchModal {
+    constructor(name: string, editor: Editor) {
+        super(name, editor);
+    }
+
+    override onConfirm(): void | Thenable<void> {
+        let editor = this.getEditor() as VSModalEditor;
+        editor.nextMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
+    }
+}
+
 class VSModalEditor extends Editor {
     _vsTextEditor: vscode.TextEditor;
     _styles: StyleTable;
@@ -65,6 +78,31 @@ class VSModalEditor extends Editor {
 
     constructor(vsEditor: vscode.TextEditor) {
         super();
+
+        async function execCommandCb(modal: KeymapModal, command: string, ...args: any) {
+            await vscode.commands.executeCommand(command, ...args);
+        }
+        async function insertTextCb(modal: KeymapModal) {
+            let text = modal.getCurrentKeySeq().join("");
+            await vscode.commands.executeCommand('default:type', { text });
+        }
+
+        let searchModal = new VSSearchModal("search", this);
+        let normalModal = new KeymapModal("normal", this, {
+            onExecCommand: execCommandCb,
+        });
+        let visualModal = new KeymapModal("visual", this, {
+            onExecCommand: execCommandCb,
+        });
+        let insertModal = new KeymapModal("insert", this, {
+            onDefault: insertTextCb,
+            onTimeout: insertTextCb,
+            onExecCommand: execCommandCb,
+        });
+        this.setSearchModal(searchModal);
+        this.setInsertModal(insertModal);
+        this.setNormalModal(normalModal);
+        this.setVisualModal(visualModal);
 
         this._vsTextEditor = vsEditor;
         this._oldCursorStyle = vsEditor.options.cursorStyle;
@@ -89,8 +127,8 @@ class VSModalEditor extends Editor {
         searchRange?: SearchRange | undefined;
     }): void {
         super.enterMode(modalType, options);
-        if (this.isNormal() || this.isInsert())
-            this._clearSelection();
+        // if (this.isNormal() || this.isInsert())
+        //     this._clearSelection();
         if (!this.isVisual())
             this._visualBlockRange = null;
         if (this.isVisual(VisualType.block))
@@ -104,19 +142,7 @@ class VSModalEditor extends Editor {
 
     }
 
-    override async onExecCommand(command: string, ...args: any) {
-        await vscode.commands.executeCommand(command, ...args);
-    }
-    override async onInsertDefaultAction(keySeq: string[]) {
-        let text = keySeq.join("");
-        await vscode.commands.executeCommand('default:type', { text });
-    }
-    override async onInsertTimeoutAction(keySeq: string[]) {
-        let text = keySeq.join("");
-        await vscode.commands.executeCommand('default:type', { text });
-    }
-    override  onNoramlTimeoutAction(keySeq: string[]): Thenable<void> | void { }
-    override  onVisualTimeoutAction(keySeq: string[]): Thenable<void> | void { }
+
 
     getVSCodeTextEditor(): vscode.TextEditor {
         return this._vsTextEditor;
@@ -126,11 +152,11 @@ class VSModalEditor extends Editor {
         this.updateCursorStyle();
         if (this._currentModalType === ModalType.normal ||
             this._currentModalType === ModalType.insert) {
-            await this._clearSelection();
+            await this.clearSelection();
         }
     }
 
-    async _clearSelection() {
+    async clearSelection() {
         let s = this._vsTextEditor.selection;
         let newSelections = [new vscode.Selection(s.anchor, s.anchor)];
         this._vsTextEditor.selections = newSelections;
@@ -155,7 +181,7 @@ class VSModalEditor extends Editor {
         let normalConfig = config.normalKeymaps ?? {};
         let insertConfig = config.insertKeymaps ?? {};
         let visualConfig = config.visualKeymaps ?? {};
-        let searchConfig = config.searchKeymaps ?? {};
+        // let searchConfig = config.searchKeymaps ?? {};
 
 
         if (normalConfig) {
@@ -170,10 +196,10 @@ class VSModalEditor extends Editor {
             let keymap = ParseKeymapConfigObj(visualConfig);
             this.getVisualModal().updateKeymap(keymap);
         }
-        if (searchConfig) {
-            let keymap = ParseKeymapConfigObj(searchConfig);
-            this.getSearchModal().updateKeymap(keymap);
-        }
+        // if (searchConfig) {
+        // let keymap = ParseKeymapConfigObj(searchConfig);
+        // this.getSearchModal().updateKeymap(keymap);
+        // }
     }
 
     updateKeymapsFromPreset(presetName: string) {
@@ -198,7 +224,7 @@ class VSModalEditor extends Editor {
         let searchCursorStyle = config.get<string>("searchCursorStyle") ?? "underline";
 
         insertTimeout = insertTimeout && insertTimeout >= 0 ? insertTimeout : null;
-        this.setInsertTimeout(insertTimeout);
+        this.getInsertModal().setTimeout(insertTimeout);
 
         let styles = {
             [ModalType.normal]: toVSCodeCursorStyle(normalCursorStyle),
@@ -381,8 +407,6 @@ class VSModalEditor extends Editor {
 
     onSelectionChange() {
     }
-
-
 
     _getLineRange(at: vscode.Position | number, after?: boolean) {
         let editor = this._vsTextEditor;

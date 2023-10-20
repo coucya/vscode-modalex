@@ -250,7 +250,7 @@ function ParseKeymapConfigObj(obj: object): Keymap {
 
 class Action {
     constructor() { }
-    async exec(modal: Modal, keySeq: string[]) { }
+    async exec(modal: BaseModal, keySeq: string[]) { }
 }
 
 class CommandAction extends Action {
@@ -261,21 +261,18 @@ class CommandAction extends Action {
         this.command = command;
         this.args = args;
     }
-    async exec(modal: Modal, keySeq: string[]) {
-        let editor = modal.getEditor();
-        if (editor) {
-            await editor.onExecCommand(this.command, this.args);
-        }
+    async exec(modal: BaseModal, keySeq: string[]) {
+        await modal.onExecCommand(this.command, this.args);
     }
 }
 
 class FunctionAction extends Action {
-    _func: (Modal: Modal, keySeq: string[]) => Thenable<void> | void;
-    constructor(f: (Modal: Modal, keySeq: string[]) => Thenable<void> | void) {
+    _func: (Modal: BaseModal, keySeq: string[]) => Thenable<void> | void;
+    constructor(f: (Modal: BaseModal, keySeq: string[]) => Thenable<void> | void) {
         super();
         this._func = f;
     }
-    async exec(modal: Modal, keySeq: string[]) {
+    async exec(modal: BaseModal, keySeq: string[]) {
         await this._func(modal, keySeq);
     }
 }
@@ -286,7 +283,7 @@ class SeqAction extends Action {
         super();
         this._seq = [...actions];
     }
-    async exec(modal: Modal, keySeq: string[]) {
+    async exec(modal: BaseModal, keySeq: string[]) {
         for (var action of this._seq) {
             await action.exec(modal, keySeq);
         }
@@ -376,34 +373,69 @@ function modalTypeToString(type_: ModalType) {
     }
 }
 
-class Modal {
-    _type: ModalType;
+abstract class BaseModal {
+    _name: string;
     _editor: Editor;
 
     _timeout: number | null;
 
+    _currentKeySeq: string[];
+
+    constructor(name: string, editor: Editor, option?: {
+        timeout?: number;
+    }) {
+        this._name = name;
+        this._editor = editor;
+        this._timeout = option?.timeout ?? null;
+        this._currentKeySeq = [];
+    }
+
+    getName(): string { return this._name; }
+    getEditor(): Editor { return this._editor; }
+    setTimeout(timeout: number | null) { this._timeout = timeout && timeout >= 0 ? timeout : null; }
+    getTimeout(): number | null { return this._timeout; }
+
+    getCurrentKeySeq(): string[] { return this._currentKeySeq; }
+
+    reset(): void | Thenable<void> { }
+
+    onEnter(): void | Thenable<void> { }
+    onLeave(): void | Thenable<void> { }
+
+    onKey(key: string): void | Thenable<void> { }
+    onTimeout(): void | Thenable<void> { }
+    onDefault(): void | Thenable<void> { }
+
+    onExecCommand(command: string, args: any): void | Thenable<void> { }
+}
+
+class KeymapModal extends BaseModal {
     _rootKeymap: Keymap;
     _currentKeymap: Keymap | null;
-    _currentKeySeq: string[];
 
     _timeoutHandle: NodeJS.Timeout | null = null;
 
-    constructor(type_: ModalType, editor: Editor, option?: {
-        timeout?: number,
-    }) {
-        this._type = type_;
-        this._editor = editor;
+    _onTimeout: ((modal: KeymapModal) => void | Thenable<void>) | null;
+    _onDefault: ((modal: KeymapModal) => void | Thenable<void>) | null;
 
-        this._timeout = option?.timeout ?? null;
+    _onExecCommand: ((modal: KeymapModal, command: string, args: any) => void | Thenable<void>) | null;
+
+    constructor(name: string, editor: Editor, option?: {
+        timeout?: number,
+        onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
+        onDefault?: (modal: KeymapModal) => void | Thenable<void>,
+        onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
+    }) {
+        super(name, editor, option);
+        this._onTimeout = option?.onTimeout ?? null;
+        this._onDefault = option?.onDefault ?? null;
+        this._onExecCommand = option?.onExecCommand ?? null;
 
         this._rootKeymap = new Keymap();
 
         this._currentKeymap = null;
         this._currentKeySeq = [];
     }
-
-    getType(): ModalType { return this._type; }
-    getEditor(): Editor | null { return this._editor; }
 
     updateKeymap(keymap: Keymap) {
         this._rootKeymap.marge(keymap);
@@ -414,7 +446,7 @@ class Modal {
         this._rootKeymap.clear();
     }
 
-    reset() {
+    override reset() {
         this._clearTimeout();
         this._currentKeySeq = [];
         this._currentKeymap = null;
@@ -427,105 +459,133 @@ class Modal {
         }
     }
 
-    async _doTimeout() {
-        let keySeq = this._currentKeySeq;
-        this._timeoutHandle = null;
-        try {
-            if (this._type === ModalType.insert)
-                await this._editor.onInsertTimeoutAction(keySeq);
-            else if (this._type === ModalType.normal)
-                await this._editor.onNoramlTimeoutAction(keySeq);
-            else if (this._type === ModalType.visual)
-                await this._editor.onVisualTimeoutAction(keySeq);
-            else if (this._type === ModalType.search)
-                await this._editor.onSearchTimeoutAction(keySeq);
-        } finally {
-            this.reset();
-        }
+    override async onExecCommand(command: string, args: any) {
+        if (this._onExecCommand) await this._onExecCommand(this, command, args);
     }
 
-    async _doDefault() {
-        let keySeq = this._currentKeySeq;
-        this._timeoutHandle = null;
-        try {
-            if (this._type === ModalType.insert)
-                await this._editor.onInsertDefaultAction(keySeq);
-            else if (this._type === ModalType.normal)
-                await this._editor.onNoramlDefaultAction(keySeq);
-            else if (this._type === ModalType.visual)
-                await this._editor.onVisualDefaultAction(keySeq);
-            else if (this._type === ModalType.search)
-                await this._editor.onSearchDefaultAction(keySeq);
-        } finally {
-            this.reset();
-        }
+    override async onTimeout() {
+        if (this._onTimeout) await this._onTimeout(this);
     }
-
-
-    async emitKey(key: string) {
+    override async onDefault() {
+        if (this._onDefault) await this._onDefault(this);
+    }
+    override  async onKey(key: string) {
         this._clearTimeout();
 
         this._currentKeySeq.push(key);
 
-        let ac_or_km: Action | Keymap | null = null;
+        let actionOrKeymap: Action | Keymap | null = null;
         if (this._currentKeymap) {
-            ac_or_km = this._currentKeymap.getKey(key);
+            actionOrKeymap = this._currentKeymap.getKey(key);
         } else {
-            ac_or_km = this._rootKeymap.getKey(key);
+            actionOrKeymap = this._rootKeymap.getKey(key);
         }
 
-        if (ac_or_km instanceof Keymap) {
-            this._currentKeymap = ac_or_km;
+        if (actionOrKeymap instanceof Keymap) {
+            this._currentKeymap = actionOrKeymap;
             if (typeof this._timeout === "number") {
-                this._timeoutHandle = setTimeout(() => this._doTimeout(), this._timeout);
+                this._timeoutHandle = setTimeout(() => {
+                    try {
+                        this._timeoutHandle = null;
+                        this.onTimeout();
+                    } finally {
+                        this.reset();
+                    }
+                }, this._timeout);
             }
-        } else if (ac_or_km instanceof Action) {
+        } else if (actionOrKeymap instanceof Action) {
             try {
                 let keySeq = this._currentKeySeq;
-                await ac_or_km.exec(this, keySeq);
+                await actionOrKeymap.exec(this, keySeq);
             } finally {
                 this.reset();
             }
         } else {
-            this._doDefault();
+            try {
+                this.onDefault();
+            } finally {
+                this.reset();
+            }
         }
     }
 }
 
-abstract class Editor extends EventEmitter {
-    _normalModal: Modal;
-    _insertModal: Modal;
-    _visualModal: Modal;
-    _searchModal: Modal;
+class SearchModal extends BaseModal {
+    _text: string;
+    _searchRange: SearchRange;
+    _searchDirection: SearchDirection;
 
-    _currentModal: Modal;
+    constructor(name: string, editor: Editor) {
+        super(name, editor);
+        this._text = "";
+        this._searchRange = SearchRange.document;
+        this._searchDirection = SearchDirection.after;
+    }
+
+    getText(): string { return this._text; }
+    setText(text: string): void { this._text = text; }
+
+    getSearchRange(): SearchRange { return this._searchRange; }
+    setSearchRange(searchRange: SearchRange): void { this._searchRange = searchRange; }
+
+    getSearchDirection(): SearchDirection { return this._searchDirection; }
+    setSearchDirection(searchDirection: SearchDirection): void { this._searchDirection = searchDirection; }
+
+    override onEnter(): void | Thenable<void> {
+        this._text = "";
+    }
+
+    override onKey(key: string): void | Thenable<void> {
+        if (key === "\n") {
+            this.onConfirm();
+        } else {
+            this._text += key;
+        }
+    }
+
+    onConfirm(): void | Thenable<void> { }
+}
+abstract class Editor extends EventEmitter {
+    _normalModal: KeymapModal;
+    _insertModal: KeymapModal;
+    _visualModal: KeymapModal;
+    _searchModal: SearchModal;
+
+    _currentModal: BaseModal;
     _currentModalType: ModalType;
     _visualType: VisualType = VisualType.normal;
 
-    constructor() {
+    constructor(option?: {
+        normalModal?: KeymapModal,
+        insertModal?: KeymapModal,
+        visualModal?: KeymapModal,
+        searchModal?: SearchModal,
+    }) {
         super();
-        this._normalModal = new Modal(ModalType.normal, this);
-        this._visualModal = new Modal(ModalType.visual, this);
-        this._insertModal = new Modal(ModalType.insert, this);
-        this._searchModal = new Modal(ModalType.search, this);
+        this._normalModal = option?.normalModal ?? new KeymapModal("normal", this);
+        this._visualModal = option?.visualModal ?? new KeymapModal("visual", this);
+        this._insertModal = option?.insertModal ?? new KeymapModal("insert", this);
+        this._searchModal = option?.searchModal ?? new SearchModal("search", this);
 
         this._currentModal = this._normalModal;
         this._currentModalType = ModalType.normal;
     }
 
     getCurrentModalType(): ModalType { return this._currentModalType; }
-    getCurrentModal(): Modal { return this._currentModal; }
-    getNormalModal(): Modal { return this._normalModal; }
-    getInsertModal(): Modal { return this._insertModal; }
-    getVisualModal(): Modal { return this._visualModal; }
-    getSearchModal(): Modal { return this._searchModal; }
+    getCurrentModal(): BaseModal { return this._currentModal; }
 
-    setInsertTimeout(timeout: number | null) {
-        this._insertModal._timeout = timeout;
-    }
+    getNormalModal(): KeymapModal { return this._normalModal; }
+    getInsertModal(): KeymapModal { return this._insertModal; }
+    getVisualModal(): KeymapModal { return this._visualModal; }
+    getSearchModal(): SearchModal { return this._searchModal; }
+
+    protected setNormalModal(modal: KeymapModal) { this._normalModal = modal; }
+    protected setInsertModal(modal: KeymapModal) { this._insertModal = modal; }
+    protected setVisualModal(modal: KeymapModal) { this._visualModal = modal; }
+    protected setSearchModal(modal: SearchModal) { this._searchModal = modal; }
 
     async _emitkey(key: string) {
-        await this._currentModal.emitKey(key);
+        await this._currentModal.onKey(key);
     }
 
     async emitKeys(key: string) {
@@ -567,7 +627,7 @@ abstract class Editor extends EventEmitter {
         modalType: string | ModalType,
         option?: { visualType?: VisualType; }
     ) {
-        let modal: Modal | null = null;
+        let modal: BaseModal | null = null;
         let type_: ModalType | null = null;
         if (typeof modalType === "string") {
             switch (modalType) {
@@ -601,16 +661,6 @@ abstract class Editor extends EventEmitter {
             throw new ModalRuntimeError(`mode "${modalType}" not found`);
         }
     }
-
-    onExecCommand(command: string, ...args: any): Thenable<void> | void { }
-    onInsertDefaultAction(keySeq: string[]): Thenable<void> | void { }
-    onNoramlDefaultAction(keySeq: string[]): Thenable<void> | void { }
-    onVisualDefaultAction(keySeq: string[]): Thenable<void> | void { }
-    onSearchDefaultAction(keySeq: string[]): Thenable<void> | void { }
-    onInsertTimeoutAction(keySeq: string[]): Thenable<void> | void { }
-    onNoramlTimeoutAction(keySeq: string[]): Thenable<void> | void { }
-    onVisualTimeoutAction(keySeq: string[]): Thenable<void> | void { }
-    onSearchTimeoutAction(keySeq: string[]): Thenable<void> | void { }
 }
 
 export {
@@ -622,7 +672,9 @@ export {
     SearchDirection,
     SearchRange,
     modalTypeToString,
-    Modal,
+    BaseModal,
+    SearchModal,
+    KeymapModal,
     Editor,
     Action,
     CommandAction,

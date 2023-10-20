@@ -33,8 +33,10 @@ function subStringCount(str: string, sub: string): number {
 
 function _enterNormal() {
     let editor = getExtension().getCurrentEditor();
-    if (editor)
+    if (editor) {
+        editor.clearSelection();
         editor.enterMode(ModalType.normal);
+    }
 }
 function _enterInsert(option?: { right: boolean; }) {
     let editor = getExtension().getCurrentEditor();
