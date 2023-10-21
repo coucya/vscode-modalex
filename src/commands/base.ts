@@ -57,6 +57,8 @@ function _enterVisualBlock() {
         editor.enterMode(ModalType.visual, { visualType: VisualType.block });
     }
 }
+
+
 function _searchCharLineBefore() {
     let ext = getExtension();
     let editor = ext.getCurrentEditor();
@@ -80,17 +82,29 @@ function _searchCharLineAfter() {
     }
 }
 
-function _searchClear() {
-    // getExtension().searchTextClear();
-}
-function _searchAppend() {
+function _searchBefore() {
     let ext = getExtension();
     let editor = ext.getCurrentEditor();
-    if (!editor)
-        return;
-    let keys = editor.getCurrentKeySeq().join("");
-    // getExtension().searchTextAppend(keys);
+    if (editor) {
+        editor.enterMode(ModalType.search, {
+            searchRange: SearchRange.document,
+            searchDirection: SearchDirection.before,
+            singleChar: false,
+        });
+    }
 }
+function _searchAfter() {
+    let ext = getExtension();
+    let editor = ext.getCurrentEditor();
+    if (editor) {
+        editor.enterMode(ModalType.search, {
+            searchRange: SearchRange.document,
+            searchDirection: SearchDirection.after,
+            singleChar: false,
+        });
+    }
+}
+
 function _searchNext() {
     let ext = getExtension();
     let editor = ext.getCurrentEditor();
@@ -135,6 +149,8 @@ function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(`${extensionName}.enterVisualBlock`, _enterVisualBlock),
         vscode.commands.registerCommand(`${extensionName}.searchCharLineBefore`, _searchCharLineBefore),
         vscode.commands.registerCommand(`${extensionName}.searchCharLineAfter`, _searchCharLineAfter),
+        vscode.commands.registerCommand(`${extensionName}.searchBefore`, _searchBefore),
+        vscode.commands.registerCommand(`${extensionName}.searchAfter`, _searchAfter),
         vscode.commands.registerCommand(`${extensionName}.searchNext`, _searchNext),
         vscode.commands.registerCommand(`${extensionName}.searchPrev`, _searchPrev),
     );

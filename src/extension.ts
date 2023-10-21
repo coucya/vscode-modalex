@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { EventEmitter } from "events";
 
-import * as commands from './commands/base';
 import { VSModalEditor } from "./VSEditor";
 import { extensionName, extensionDisplayName } from "./config";
 import { ModalType, modalTypeToString } from './modal/modal';
@@ -55,6 +54,7 @@ class Extension extends EventEmitter {
     async emitKeys(keys: string) {
         if (this._curEditor) {
             await this._curEditor.emitKeys(keys);
+            this.updateStatusBarText();
         }
     }
 
@@ -106,17 +106,23 @@ class Extension extends EventEmitter {
         return this._curEditor?.getSearchModal().getText() ?? "";
     }
 
-    updateStatusBarText(msg?: string) {
-        if (this._curEditor) {
-            let mode = modalTypeToString(this._curEditor.getCurrentModalType());
+    _oldStatusBarText: string | null = null;
+    updateStatusBarText() {
+        let modal = this._curEditor?.getCurrentModal();
+        if (modal) {
+            let name = modal.getName().toUpperCase();
+            let msg = modal.getModalMessage();
             let s: string;
-            if (msg) {
-                s = `-- ${mode.toUpperCase()} --: ${msg}`;
-            } else {
-                s = `-- ${mode.toUpperCase()} --`;
+            if (msg && msg !== "")
+                s = `-- ${name} --: ${msg}`;
+            else
+                s = `-- ${name} --`;
+            if (this._oldStatusBarText !== s) {
+                this._oldStatusBarText = s;
+                this._statusBar.text = s;
             }
-            this._statusBar.text = s;
         } else {
+            this._oldStatusBarText = "-- NO MODAL --";
             this._statusBar.text = "-- NO MODAL --";
         }
     }

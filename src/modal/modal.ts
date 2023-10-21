@@ -24,13 +24,6 @@ enum SearchRange {
     document = 2,
 }
 
-function isVisualType(t: VisualType | SearchDirection | undefined): t is VisualType {
-    return t === VisualType.normal || t === VisualType.line || t === VisualType.block;
-}
-function isSearchDirection(t: VisualType | SearchDirection | undefined): t is SearchDirection {
-    return t === SearchDirection.before || t === SearchDirection.after || t === SearchDirection.start || t === SearchDirection.reverse;
-}
-
 function modalTypeToString(type_: ModalType) {
     switch (type_) {
         case ModalType.normal: return "normal";
@@ -66,6 +59,8 @@ abstract class BaseModal {
     getCurrentKeySeq(): string[] { return this._currentKeySeq; }
 
     reset(): void | Thenable<void> { }
+
+    getModalMessage(): string { return ""; }
 
     onWillEnter(option?: any): void | Thenable<void> { }
     onDidEnter(): void | Thenable<void> { }
@@ -113,6 +108,10 @@ class KeymapModal extends BaseModal {
     clearKeymap() {
         this.reset();
         this._rootKeymap.clear();
+    }
+
+    override getModalMessage() {
+        return this.getCurrentKeySeq().join("");
     }
 
     override reset() {
@@ -201,6 +200,10 @@ class SearchModal extends BaseModal {
 
     getSearchDirection(): SearchDirection { return this._searchDirection; }
     setSearchDirection(searchDirection: SearchDirection): void { this._searchDirection = searchDirection; }
+
+    override getModalMessage() {
+        return this._text;
+    }
 
     override onWillEnter(option?: any): void | Thenable<void> {
         this._text = "";
