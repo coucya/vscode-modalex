@@ -3,29 +3,28 @@ import { EventEmitter } from "events";
 
 import { ModalRuntimeError } from "./error";
 import { Keymap } from "./keymap";
-import { BaseModal, KeymapModal, SearchModal } from "./modal";
+import { BaseModal, KeymapModal, VisualModal, SearchModal } from "./modal";
 import { ModalType, VisualType } from "./modal";
 
 abstract class Editor extends EventEmitter {
     _normalModal: KeymapModal;
     _insertModal: KeymapModal;
-    _visualModal: KeymapModal;
+    _visualModal: VisualModal;
     _searchModal: SearchModal;
 
     _currentModal: BaseModal;
     _currentModalType: ModalType;
-    _visualType: VisualType = VisualType.normal;
 
     constructor(option?: {
         normalModal?: KeymapModal,
         insertModal?: KeymapModal,
-        visualModal?: KeymapModal,
+        visualModal?: VisualModal,
         searchModal?: SearchModal,
     }) {
         super();
         this._normalModal = option?.normalModal ?? new KeymapModal("normal", this);
-        this._visualModal = option?.visualModal ?? new KeymapModal("visual", this);
         this._insertModal = option?.insertModal ?? new KeymapModal("insert", this);
+        this._visualModal = option?.visualModal ?? new VisualModal("visual", this);
         this._searchModal = option?.searchModal ?? new SearchModal("search", this);
 
         this._currentModal = this._normalModal;
@@ -37,12 +36,12 @@ abstract class Editor extends EventEmitter {
 
     getNormalModal(): KeymapModal { return this._normalModal; }
     getInsertModal(): KeymapModal { return this._insertModal; }
-    getVisualModal(): KeymapModal { return this._visualModal; }
+    getVisualModal(): VisualModal { return this._visualModal; }
     getSearchModal(): SearchModal { return this._searchModal; }
 
     protected setNormalModal(modal: KeymapModal) { this._normalModal = modal; }
     protected setInsertModal(modal: KeymapModal) { this._insertModal = modal; }
-    protected setVisualModal(modal: KeymapModal) { this._visualModal = modal; }
+    protected setVisualModal(modal: VisualModal) { this._visualModal = modal; }
     protected setSearchModal(modal: SearchModal) { this._searchModal = modal; }
 
     async _emitkey(key: string) {
@@ -78,7 +77,8 @@ abstract class Editor extends EventEmitter {
     isNormal() { return this._currentModalType === ModalType.normal; }
     isInsert() { return this._currentModalType === ModalType.insert; }
     isVisual(visualType?: VisualType) {
-        return this._currentModalType === ModalType.visual && (visualType === undefined || this._visualType === visualType);
+        return this._currentModalType === ModalType.visual &&
+            (visualType === undefined || this._visualModal.getVisualType() === visualType);
     }
     isSearch() {
         return this._currentModalType === ModalType.search;
@@ -106,11 +106,8 @@ abstract class Editor extends EventEmitter {
             }
         }
 
-        let visualType: VisualType = option?.visualType ?? VisualType.normal;
 
         if (modal && type_) {
-            this._visualType = visualType;
-
             this._currentModal.onWillLeave();
 
             modal.onWillEnter(option);

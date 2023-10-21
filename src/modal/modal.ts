@@ -8,6 +8,7 @@ enum ModalType {
     visual = 3,
     search = 4,
 }
+
 enum VisualType {
     normal = 1,
     line = 2,
@@ -22,16 +23,6 @@ enum SearchDirection {
 enum SearchRange {
     line = 1,
     document = 2,
-}
-
-function modalTypeToString(type_: ModalType) {
-    switch (type_) {
-        case ModalType.normal: return "normal";
-        case ModalType.insert: return "insert";
-        case ModalType.visual: return "visual";
-        case ModalType.search: return "search";
-        default: throw new Error(`invalid ModalType: ${type_}`);
-    }
 }
 
 abstract class BaseModal {
@@ -178,6 +169,29 @@ class KeymapModal extends BaseModal {
     }
 }
 
+class VisualModal extends KeymapModal {
+    _visualType: VisualType;
+
+    constructor(name: string, editor: Editor, option?: {
+        timeout?: number,
+        onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
+        onDefault?: (modal: KeymapModal) => void | Thenable<void>,
+        onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
+    }) {
+        super(name, editor, option);
+        this._visualType = VisualType.normal;
+    }
+
+    override onWillEnter(option?: any): void | Thenable<void> {
+        if (option && typeof option === "object") {
+            this._visualType = option?.visualType;
+        }
+    }
+
+    getVisualType(): VisualType { return this._visualType; }
+    setVisualType(visualType: VisualType) { this._visualType = visualType; }
+}
+
 class SearchModal extends BaseModal {
     _text: string;
     _searchRange: SearchRange;
@@ -237,6 +251,6 @@ export {
     SearchRange,
     BaseModal,
     KeymapModal,
+    VisualModal,
     SearchModal,
-    modalTypeToString,
 };

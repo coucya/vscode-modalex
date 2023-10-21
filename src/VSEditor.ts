@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { SearchModal, KeymapModal } from "./modal/modal";
+import { SearchModal, KeymapModal, VisualModal } from "./modal/modal";
 import { ModalType, VisualType, SearchDirection, SearchRange } from "./modal/modal";
 import { Editor } from "./modal/editor";
 import { ParseKeymapConfigObj } from "./modal/parser";
@@ -96,7 +96,7 @@ class VSModalEditor extends Editor {
         let normalModal = new KeymapModal("normal", this, {
             onExecCommand: execCommandCb,
         });
-        let visualModal = new KeymapModal("visual", this, {
+        let visualModal = new VisualModal("visual", this, {
             onExecCommand: execCommandCb,
         });
         let insertModal = new KeymapModal("insert", this, {
@@ -126,10 +126,10 @@ class VSModalEditor extends Editor {
 
     override enterMode(modalType: string | ModalType, options?: any): void {
         super.enterMode(modalType, options);
-        if (!this.isVisual())
-            this._visualBlockRange = null;
+        // if (!this.isVisual())
+        // this._visualBlockRange = null;
         if (this.isVisual(VisualType.block))
-            this.setVisualBlockRange(this._vsTextEditor.selection);
+            this.setLastSelection(this._vsTextEditor.selection);
         if (this.isVisual(VisualType.line)) {
             let base = this._lineAsSelection(this._vsTextEditor.selection.anchor.line);
             if (base) {
@@ -220,41 +220,27 @@ class VSModalEditor extends Editor {
         this.updateKeymaps({ normalKeymaps, insertKeymaps, visualKeymaps, searchKeymaps });
     }
 
-    _visualBlockRange: { beg: number, end: number; } | null = null;
-    setVisualBlockRange(beg: number | vscode.Range | vscode.Selection | null, end?: number) {
-        if (typeof beg === "number")
-            this._visualBlockRange = { beg, end: end ?? 0 };
-        else if (beg && typeof beg === "object")
-            this._visualBlockRange = { beg: beg.start.character, end: beg.end.character };
-        else
-            this._visualBlockRange = null;
-        return this._visualBlockRange;
-    }
+    _lastSelection: vscode.Selection | null = null;
+    setLastSelection(s: vscode.Selection) { this._lastSelection = s; }
 
-    _rangeTo(range: vscode.Range) {
-        return { beg: range.start.character, end: range.end.character };
-    }
-
-    _lineAsSelection(line: number): vscode.Selection | undefined {
+    _lineAsSelection(line: number, beg?: number, end?: number): vscode.Selection | undefined {
         let document = this._vsTextEditor.document;
         if (line < 0 || line >= document.lineCount)
             return undefined;
 
-        if (this._visualType === VisualType.block) {
-            let bRange = this._visualBlockRange ? this._visualBlockRange : this._rangeTo(this._vsTextEditor.selection);
-            let s = new vscode.Position(line, bRange.beg);
-            let e = new vscode.Position(line, bRange.end);
-            return new vscode.Selection(s, e);
-        } else if (this._visualType === VisualType.line) {
-            let range = document.lineAt(line).range;
-            return new vscode.Selection(range.start, range.end);
-        } else {
-            return undefined;
-        }
+        let range = document.lineAt(line).range;
+        let s = range.start;
+        let e = range.end;
+        if (beg && beg >= s.character && beg <= e.character)
+            s = new vscode.Position(s.line, beg);
+        if (end && end >= s.character && end <= e.character)
+            e = new vscode.Position(e.line, end);
+        return new vscode.Selection(s, e);
     }
+
     _widthOfLine(line: number): number | undefined {
         let document = this._vsTextEditor.document;
-        if (line > document.lineCount)
+        if (line >= document.lineCount)
             return undefined;
         let l = this._vsTextEditor.document.lineAt(line);
         return l.range.end.character;
@@ -265,11 +251,23 @@ class VSModalEditor extends Editor {
         return ranges.reduce((a, b) => a.union(b));
     }
     _visualContainsLine(line: number): boolean {
-        if (!this.isVisual())
-            return false;
         return this._vsTextEditor.selections.some(a => line >= a.start.line && line <= a.end.line);
     }
 
+    __translateSelection(line: number): vscode.Selection | undefined {
+        let document = this._vsTextEditor.document;
+        if (line < 0 || line >= document.lineCount)
+            return undefined;
+
+        if (this._lastSelection) {
+            let s = new vscode.Position(line, this._lastSelection.start.character);
+            let e = new vscode.Position(line, this._lastSelection.end.character);
+            return new vscode.Selection(s, e);
+        } else {
+            let r = document.lineAt(line).range;
+            return new vscode.Selection(r.start, r.end);
+        }
+    }
     _cursorUp() {
         if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
             vscode.commands.executeCommand("cursorUp");
@@ -283,7 +281,8 @@ class VSModalEditor extends Editor {
             if (nextLine < 0)
                 return;
             if (!this._visualContainsLine(nextLine)) {
-                let newSelection = this._lineAsSelection(nextLine);
+                // let newSelection = this._lineAsSelection(nextLine, this._visualBlockRange?.beg,);
+                let newSelection = this.__translateSelection(nextLine);
                 let newSelections = newSelection ? [newSelection, ...selections] : selections;
                 this._vsTextEditor.selections = newSelections;
             } else {
@@ -306,7 +305,8 @@ class VSModalEditor extends Editor {
             if (nextLine >= this._vsTextEditor.document.lineCount)
                 return;
             if (!this._visualContainsLine(nextLine)) {
-                let newSelection = this._lineAsSelection(nextLine);
+                // let newSelection = this._lineAsSelection(nextLine);
+                let newSelection = this.__translateSelection(nextLine);
                 let newSelections = newSelection ? [newSelection, ...selections] : selections;
                 this._vsTextEditor.selections = newSelections = newSelection ? [newSelection, ...selections] : selections;
                 this._vsTextEditor.selections = newSelections;
@@ -342,7 +342,7 @@ class VSModalEditor extends Editor {
                 else
                     return b;
             });
-            this.setVisualBlockRange(maxSelection);
+            this.setLastSelection(maxSelection);
         }
     }
 
@@ -370,7 +370,7 @@ class VSModalEditor extends Editor {
                 else
                     return b;
             });
-            this.setVisualBlockRange(maxSelection);
+            this.setLastSelection(maxSelection);
         }
     }
 

@@ -3,7 +3,7 @@ import { EventEmitter } from "events";
 
 import { VSModalEditor } from "./VSEditor";
 import { extensionName, extensionDisplayName } from "./config";
-import { ModalType, modalTypeToString } from './modal/modal';
+import { ModalType } from './modal/modal';
 
 
 let channel: vscode.OutputChannel | null = null;
