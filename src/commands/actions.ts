@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 
 import { extensionName, getExtension } from "../extension";
 import { VSModalEditor, CursorMoveDir } from "../VSEditor";
-import { ModalType } from "../modalEditor";
+import { ModalType } from "../modal/modal";
 
 const commandPrefix = `${extensionName}.action`;
 const pasteId = `${commandPrefix}.paste`;

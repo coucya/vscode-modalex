@@ -1,20 +1,9 @@
 import * as vscode from 'vscode';
 
-import {
-    Keymap,
-    BaseModal,
-    SearchModal,
-    KeymapModal,
-    ModalType,
-    VisualType,
-    SearchDirection,
-    SearchRange,
-    Editor,
-    Action,
-    FunctionAction,
-    ParseKeymapConfigObj,
-    deepCopy,
-} from "./modalEditor";
+import { SearchModal, KeymapModal } from "./modal/modal";
+import { ModalType, VisualType, SearchDirection, SearchRange } from "./modal/modal";
+import { Editor } from "./modal/editor";
+import { ParseKeymapConfigObj } from "./modal/parser";
 
 import * as presetSimple from "./presets/simple";
 
@@ -179,8 +168,6 @@ class VSModalEditor extends Editor {
         let normalConfig = config.normalKeymaps ?? {};
         let insertConfig = config.insertKeymaps ?? {};
         let visualConfig = config.visualKeymaps ?? {};
-        // let searchConfig = config.searchKeymaps ?? {};
-
 
         if (normalConfig) {
             let keymap = ParseKeymapConfigObj(normalConfig);
@@ -194,10 +181,6 @@ class VSModalEditor extends Editor {
             let keymap = ParseKeymapConfigObj(visualConfig);
             this.getVisualModal().updateKeymap(keymap);
         }
-        // if (searchConfig) {
-        // let keymap = ParseKeymapConfigObj(searchConfig);
-        // this.getSearchModal().updateKeymap(keymap);
-        // }
     }
 
     updateKeymapsFromPreset(presetName: string) {

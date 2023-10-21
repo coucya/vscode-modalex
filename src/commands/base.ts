@@ -1,15 +1,8 @@
 import * as vscode from "vscode";
 
 import { extensionName, getExtension } from "../extension";
-import { ModalType, SearchDirection, SearchRange, VisualType } from "../modalEditor";
+import { ModalType, SearchDirection, SearchRange, VisualType } from "../modal/modal";
 
-// const enterNormalId = `${extensionName}.enterNormal`;
-// const enterInsertId = `${extensionName}.enterInsert`;
-// const enterVisualId = `${extensionName}.enterVisual`;
-// const enterVisualLineId = `${extensionName}.enterVisualLine`;
-// const enterVisualBlockId = `${extensionName}.enterVisualBlock`;
-// const enterSearchLineBeforeId = `${extensionName}.enterSearchLineBefore`;
-// const enterSearchLineAfterId = `${extensionName}.enterSearchLineAfter`;
 
 function isAtLineEnd(): boolean {
     let editor = vscode.window.activeTextEditor;

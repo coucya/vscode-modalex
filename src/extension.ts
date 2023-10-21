@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import * as commands from './commands/base';
 import { VSModalEditor } from "./VSEditor";
 import { extensionName, extensionDisplayName } from "./config";
-import { ModalType, modalTypeToString } from './modalEditor';
+import { ModalType, modalTypeToString } from './modal/modal';
 
 
 let channel: vscode.OutputChannel | null = null;
@@ -88,7 +88,7 @@ class Extension extends EventEmitter {
     }
 
     getCurrentEditor(): VSModalEditor | undefined {
-        return this._curEditor || undefined;
+        return this._curEditor ?? undefined;
     }
     setCurrentEditor(editor: vscode.TextEditor | VSModalEditor | null | undefined) {
         if (editor instanceof VSModalEditor) {
