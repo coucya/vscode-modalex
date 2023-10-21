@@ -2,7 +2,7 @@
     "name": "vscode-modalex",
     "displayName": "ModalEx",
     "description": "",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "publisher": "couc",
     "engines": {
         "vscode": "^1.80.0"
@@ -235,12 +235,21 @@
                 }
             }
         },
-        "commands": [],
+        "commands": [
+            {
+                "command": "modalex.enable",
+                "title": "Enable ModalEx"
+            },
+            {
+                "command": "modalex.disable",
+                "title": "Disable ModalEx"
+            }
+        ],
         "keybindings": [
             {
                 "key": "Escape",
                 "command": "modalex.enterNormal",
-                "when": "editorTextFocus && !suggestWidgetMultipleSuggestions && !suggestWidgetVisible"
+                "when": "editorTextFocus && modalex.isEnable"
             }
         ]
     },

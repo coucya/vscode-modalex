@@ -7,6 +7,8 @@ import { ModalType } from './modal/modal';
 
 
 let channel: vscode.OutputChannel | null = null;
+var extension: Extension | null = null;
+
 function log(msg: string) {
     if (channel) channel.appendLine(`[ info] ${msg}`);
 }
@@ -161,12 +163,9 @@ class Extension extends EventEmitter {
     }
 }
 
-
-var extension: Extension | null = null;
-
 function getExtension(): Extension {
     if (!extension)
-        throw Error("extension not initialized");
+        throw Error("ModalEx extension not enabled");
     return extension;
 }
 
@@ -241,15 +240,22 @@ function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent
     }
 }
 
-function activate(context: vscode.ExtensionContext) {
+function initialize(context: vscode.ExtensionContext) {
     channel = vscode.window.createOutputChannel(extensionDisplayName);
+    context.subscriptions.push(channel);
 
-    log("activate");
+    log("ModalEx Initialized");
+}
+
+let subscriptions: vscode.Disposable[] = [];
+function enable() {
+    if (extension)
+        return;
+
 
     extension = new Extension();
 
-    context.subscriptions.push(
-        channel,
+    subscriptions.push(
         vscode.commands.registerCommand("type", onType),
         vscode.workspace.onDidChangeConfiguration(doDidChangeConfiguration),
         vscode.window.onDidChangeActiveTextEditor(doDidChangeActiveTextEditor),
@@ -264,19 +270,28 @@ function activate(context: vscode.ExtensionContext) {
 
     extension.showStatusBar();
 
+    vscode.commands.executeCommand("setContext", `${extensionName}.isEnable`, true);
+
+    log("ModalEx enable");
 }
 
-function deactivate() {
+function disable() {
+    vscode.commands.executeCommand("setContext", `${extensionName}.isEnable`, false);
+
     extension?.destroy();
     extension = null;
 
-    log("deactivate.");
+    for (var d of subscriptions)
+        d.dispose();
+    subscriptions = [];
+
+    log("ModalEx disable");
 }
 
 export {
-    extensionName,
-    activate,
-    deactivate,
+    initialize,
+    enable,
+    disable,
     log,
     logError,
     notify,

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
-import { extensionName, getExtension } from "../extension";
+import { extensionName } from "../config";
+import { getExtension } from "../extension";
 import { VSModalEditor, CursorMoveDir } from "../VSEditor";
 import { ModalType } from "../modal/modal";
 

@@ -3,17 +3,19 @@ import * as baseCommands from './commands/base';
 import * as actionsCommands from './commands/actions';
 
 import {
-    activate as extActivate,
-    deactivate as extDeactivate,
+    initialize,
+    enable, disable,
 } from "./extension";
 
 
 export function activate(context: vscode.ExtensionContext) {
+    initialize(context);
+
     baseCommands.registerCommands(context);
     actionsCommands.registerCommands(context);
-    extActivate(context);
+    enable();
 }
 
 export function deactivate() {
-    extDeactivate();
+    disable();
 }
