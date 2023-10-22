@@ -35,9 +35,23 @@ function _enterNormal() {
 function _enterInsert(option?: { right: boolean; }) {
     let editor = getExtension().getCurrentEditor();
     if (editor) {
+        let vsEditor = editor.getVSCodeTextEditor();
+
+        let newSelections = [];
+        if (option?.right && !isAtLineEnd()) {
+            for (var selection of vsEditor.selections) {
+                let newSelection = new vscode.Selection(selection.end, selection.end);
+                newSelections.push(newSelection);
+            }
+        } else {
+            for (var selection of vsEditor.selections) {
+                let newSelection = new vscode.Selection(selection.start, selection.start);
+                newSelections.push(newSelection);
+            }
+        }
+
         editor.enterMode(ModalType.insert);
-        if (option?.right && !isAtLineEnd())
-            vscode.commands.executeCommand("cursorRight");
+        vsEditor.selections = newSelections;
     }
 }
 function _enterVisual() {

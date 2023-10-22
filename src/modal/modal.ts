@@ -183,9 +183,8 @@ class VisualModal extends KeymapModal {
     }
 
     override onWillEnter(option?: any): void | Thenable<void> {
-        if (option && typeof option === "object") {
-            this._visualType = option?.visualType;
-        }
+        let vt: VisualType = option?.visualType ?? VisualType.normal;
+        this._visualType = vt;
     }
 
     getVisualType(): VisualType { return this._visualType; }
