@@ -47,9 +47,11 @@ class Extension extends EventEmitter {
 
     destroy() {
         this._curEditor = null;
-        for (var e of this._editors.values()) {
+
+        this._statusBar.dispose();
+
+        for (var e of this._editors.values())
             e.destroy();
-        }
         this._editors.clear();
     }
 

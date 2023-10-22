@@ -198,7 +198,6 @@ class VSModalEditor extends Editor {
         let normalKeymaps = config.get<object>("normalKeymaps");
         let insertKeymaps = config.get<object>("insertKeymaps");
         let visualKeymaps = config.get<object>("visualKeymaps");
-        let searchKeymaps = config.get<object>("searchKeymaps");
         let normalCursorStyle = config.get<string>("normalCursorStyle") ?? "block";
         let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
         let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
@@ -217,7 +216,7 @@ class VSModalEditor extends Editor {
 
         this.clearKeymapsAll();
         this.updateKeymapsFromPreset(preset);
-        this.updateKeymaps({ normalKeymaps, insertKeymaps, visualKeymaps, searchKeymaps });
+        this.updateKeymaps({ normalKeymaps, insertKeymaps, visualKeymaps });
     }
 
     _lastSelection: vscode.Selection | null = null;
@@ -238,7 +237,7 @@ class VSModalEditor extends Editor {
         return new vscode.Selection(s, e);
     }
 
-    _widthOfLine(line: number): number | undefined {
+    _lineLength(line: number): number | undefined {
         let document = this._vsTextEditor.document;
         if (line >= document.lineCount)
             return undefined;
@@ -246,11 +245,7 @@ class VSModalEditor extends Editor {
         return l.range.end.character;
     }
 
-    _visualRange(): vscode.Range {
-        let ranges = this._vsTextEditor.selections as readonly vscode.Range[];
-        return ranges.reduce((a, b) => a.union(b));
-    }
-    _visualContainsLine(line: number): boolean {
+    _selectionContainsLine(line: number): boolean {
         return this._vsTextEditor.selections.some(a => line >= a.start.line && line <= a.end.line);
     }
 
@@ -280,7 +275,7 @@ class VSModalEditor extends Editor {
             let nextLine = selection.anchor.line - 1;
             if (nextLine < 0)
                 return;
-            if (!this._visualContainsLine(nextLine)) {
+            if (!this._selectionContainsLine(nextLine)) {
                 // let newSelection = this._lineAsSelection(nextLine, this._visualBlockRange?.beg,);
                 let newSelection = this.__translateSelection(nextLine);
                 let newSelections = newSelection ? [newSelection, ...selections] : selections;
@@ -304,7 +299,7 @@ class VSModalEditor extends Editor {
             let nextLine = selection.anchor.line + 1;
             if (nextLine >= this._vsTextEditor.document.lineCount)
                 return;
-            if (!this._visualContainsLine(nextLine)) {
+            if (!this._selectionContainsLine(nextLine)) {
                 // let newSelection = this._lineAsSelection(nextLine);
                 let newSelection = this.__translateSelection(nextLine);
                 let newSelections = newSelection ? [newSelection, ...selections] : selections;
@@ -321,12 +316,12 @@ class VSModalEditor extends Editor {
     _cursorLeft() {
         if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
             let newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, -1, 0, false, this._widthOfLine(s.anchor.line));
+                return translate(s, -1, 0, false, this._lineLength(s.anchor.line));
             });
             this._vsTextEditor.selections = newSelections;
         } else if (this.isVisual(VisualType.normal)) {
             let newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, -1, 0, true, this._widthOfLine(s.anchor.line));
+                return translate(s, -1, 0, true, this._lineLength(s.anchor.line));
             });
             this._vsTextEditor.selections = newSelections;
         } else if (this.isVisual(VisualType.line)) {
@@ -349,12 +344,12 @@ class VSModalEditor extends Editor {
     _cursorRight() {
         if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
             let newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, 1, 0, false, this._widthOfLine(s.anchor.line));
+                return translate(s, 1, 0, false, this._lineLength(s.anchor.line));
             });
             this._vsTextEditor.selections = newSelections;
         } else if (this._currentModalType === ModalType.visual) {
             let newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, 1, 0, true, this._widthOfLine(s.anchor.line));
+                return translate(s, 1, 0, true, this._lineLength(s.anchor.line));
             });
             this._vsTextEditor.selections = newSelections;
         } else if (this.isVisual(VisualType.line)) {
