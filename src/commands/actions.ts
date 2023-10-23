@@ -2,17 +2,11 @@ import * as vscode from "vscode";
 
 import { extensionName } from "../config";
 import { getExtension } from "../extension";
-import { VSModalEditor, CursorMoveDir } from "../VSEditor";
+import { CursorMoveDir } from "../VSEditor";
 import { ModalType } from "../modal/modal";
 
 const commandPrefix = `${extensionName}.action`;
-const pasteId = `${commandPrefix}.paste`;
-const transformToUppercaseId = `${commandPrefix}.transformToUppercase`;
-const transformToLowercaseId = `${commandPrefix}.transformToLowercase`;
-const cursorUpId = `${commandPrefix}.cursorUp`;
-const cursorDownId = `${commandPrefix}.cursorDown`;
-const cursorLeftId = `${commandPrefix}.cursorLeft`;
-const cursorRightId = `${commandPrefix}.cursorRight`;
+
 
 async function _paste(args?: { before?: boolean; enterNormal?: boolean; }) {
     let editor = vscode.window.activeTextEditor;
@@ -103,13 +97,13 @@ function _cursorMove(direction: CursorMoveDir) {
 
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
-        vscode.commands.registerCommand(pasteId, _paste),
-        vscode.commands.registerCommand(transformToUppercaseId, () => _transformTo(true)),
-        vscode.commands.registerCommand(transformToLowercaseId, () => _transformTo(false)),
-        vscode.commands.registerCommand(cursorUpId, () => _cursorMove(CursorMoveDir.up)),
-        vscode.commands.registerCommand(cursorDownId, () => _cursorMove(CursorMoveDir.down)),
-        vscode.commands.registerCommand(cursorLeftId, () => _cursorMove(CursorMoveDir.left)),
-        vscode.commands.registerCommand(cursorRightId, () => _cursorMove(CursorMoveDir.right)),
+        vscode.commands.registerCommand(`${commandPrefix}.paste`, _paste),
+        vscode.commands.registerCommand(`${commandPrefix}.transformToUppercase`, () => _transformTo(true)),
+        vscode.commands.registerCommand(`${commandPrefix}.transformToLowercase`, () => _transformTo(false)),
+        vscode.commands.registerCommand(`${commandPrefix}.cursorUp`, () => _cursorMove(CursorMoveDir.up)),
+        vscode.commands.registerCommand(`${commandPrefix}.cursorDown`, () => _cursorMove(CursorMoveDir.down)),
+        vscode.commands.registerCommand(`${commandPrefix}.cursorLeft`, () => _cursorMove(CursorMoveDir.left)),
+        vscode.commands.registerCommand(`${commandPrefix}.cursorRight`, () => _cursorMove(CursorMoveDir.right)),
     );
 }
 

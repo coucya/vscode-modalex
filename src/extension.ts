@@ -470,10 +470,17 @@ function disable() {
     log("ModalEx disable");
 }
 
+function updateConfig() {
+    extension?.updateConfig();
+
+    log("update config");
+}
+
 export {
     initialize,
     enable,
     disable,
+    updateConfig,
     log,
     logError,
     notify,
