@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import { extensionName } from "../config";
-import { getExtension, enable, disable, updateConfig } from "../extension";
+import { getExtension, enable, disable, reloadConfig } from "../extension";
 import { ModalType, SearchDirection, SearchRange, VisualType } from "../modal/modal";
 
 
@@ -147,7 +147,7 @@ function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(`${extensionName}.enable`, enable),
         vscode.commands.registerCommand(`${extensionName}.disable`, disable),
-        vscode.commands.registerCommand(`${extensionName}.updateConfig`, updateConfig),
+        vscode.commands.registerCommand(`${extensionName}.reload`, reloadConfig),
         vscode.commands.registerCommand(`${extensionName}.enterNormal`, _enterNormal),
         vscode.commands.registerCommand(`${extensionName}.enterInsert`, _enterInsert),
         vscode.commands.registerCommand(`${extensionName}.enterVisual`, _enterVisual),

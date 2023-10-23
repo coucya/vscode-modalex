@@ -253,8 +253,8 @@
                 "title": "Disable ModalEx"
             },
             {
-                "command": "modalex.updateConfig",
-                "title": "ModalEx update config"
+                "command": "modalex.reload",
+                "title": "ModalEx reload config"
             }
         ],
         "keybindings": [
