@@ -5,26 +5,6 @@ import { getExtension, enable, disable } from "../extension";
 import { ModalType, SearchDirection, SearchRange, VisualType } from "../modal/modal";
 
 
-function isAtLineEnd(): boolean {
-    let editor = vscode.window.activeTextEditor;
-    if (editor) {
-        let selection = editor.selection;
-        let line = editor.document.lineAt(selection.end.line);
-        return selection.end.character === line.text.length;
-    } else {
-        return false;
-    }
-}
-
-function subStringCount(str: string, sub: string): number {
-    let n = 0;
-    let it = 0;
-    while ((it = str.indexOf(sub, it)) >= 0)
-        n++;
-    return n;
-}
-
-
 function _enterNormal() {
     let editor = getExtension().getCurrentEditor();
     if (editor) {

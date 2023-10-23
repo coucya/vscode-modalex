@@ -3,16 +3,9 @@ import * as vscode from 'vscode';
 import { SearchModal, KeymapModal, VisualModal } from "./modal/modal";
 import { ModalType, VisualType, SearchDirection, SearchRange } from "./modal/modal";
 import { Editor } from "./modal/editor";
-import { ParseKeymapConfigObj } from "./modal/parser";
+import { Keymap } from './modal/keymap';
 
-import * as presetSimple from "./presets/simple";
-
-const presets = {
-    simple: presetSimple
-};
-
-
-type StyleTable = {
+type CursorStyles = {
     [key in ModalType]: vscode.TextEditorCursorStyle
 };
 
@@ -48,19 +41,6 @@ function maxWidthSelection(selections: vscode.Selection[]): vscode.Selection | u
 }
 
 
-function toVSCodeCursorStyle(style: string): vscode.TextEditorCursorStyle {
-    switch (style.toLowerCase()) {
-        case "block": return vscode.TextEditorCursorStyle.Block;
-        case "block-outline": return vscode.TextEditorCursorStyle.BlockOutline;
-        case "line": return vscode.TextEditorCursorStyle.Line;
-        case "line-thin": return vscode.TextEditorCursorStyle.LineThin;
-        case "underline": return vscode.TextEditorCursorStyle.Underline;
-        case "underline-thin": return vscode.TextEditorCursorStyle.UnderlineThin;
-        default:
-            throw new Error(`invalid cursor style: "${style}"`);
-    }
-}
-
 class VSSearchModal extends SearchModal {
     constructor(name: string, editor: Editor) {
         super(name, editor);
@@ -90,7 +70,7 @@ class VSSearchModal extends SearchModal {
 
 class VSModalEditor extends Editor {
     _vsTextEditor: vscode.TextEditor;
-    _styles: StyleTable;
+    _styles: CursorStyles;
     _oldCursorStyle: vscode.TextEditorCursorStyle | undefined;
 
     constructor(vsEditor: vscode.TextEditor) {
@@ -138,8 +118,6 @@ class VSModalEditor extends Editor {
 
     override enterMode(modalType: string | ModalType, options?: any): void {
         super.enterMode(modalType, options);
-        // if (!this.isVisual())
-        // this._visualBlockRange = null;
         if (this.isVisual(VisualType.block))
             this.setLastSelection(this._vsTextEditor.selection);
         if (this.isVisual(VisualType.line)) {
@@ -161,7 +139,7 @@ class VSModalEditor extends Editor {
         this._vsTextEditor.selections = newSelections;
     }
 
-    setCursorStyle(styles: StyleTable) {
+    setCursorStyle(styles: CursorStyles) {
         this._styles = styles;
     }
 
@@ -172,63 +150,16 @@ class VSModalEditor extends Editor {
     }
 
     updateKeymaps(config: {
-        normalKeymaps?: object,
-        insertKeymaps?: object;
-        visualKeymaps?: object;
-        searchKeymaps?: object;
+        normalKeymaps?: Keymap,
+        insertKeymaps?: Keymap;
+        visualKeymaps?: Keymap;
     }) {
-        let normalConfig = config.normalKeymaps ?? {};
-        let insertConfig = config.insertKeymaps ?? {};
-        let visualConfig = config.visualKeymaps ?? {};
-
-        if (normalConfig) {
-            let keymap = ParseKeymapConfigObj(normalConfig);
-            this.getNormalModal().updateKeymap(keymap);
-        }
-        if (insertConfig) {
-            let keymap = ParseKeymapConfigObj(insertConfig);
-            this.getInsertModal().updateKeymap(keymap);
-        }
-        if (visualConfig) {
-            let keymap = ParseKeymapConfigObj(visualConfig);
-            this.getVisualModal().updateKeymap(keymap);
-        }
-    }
-
-    updateKeymapsFromPreset(presetName: string) {
-        if (presetName === "none")
-            return;
-        let preset: any = (presets as any)[presetName];
-        if (preset)
-            this.updateKeymaps(preset);
-    }
-
-    updateFromConfig(config: vscode.WorkspaceConfiguration) {
-        let preset = config.get<string>("preset") ?? "none";
-        let insertTimeout = config.get<number>("insertTimeout") ?? null;
-
-        let normalKeymaps = config.get<object>("normalKeymaps");
-        let insertKeymaps = config.get<object>("insertKeymaps");
-        let visualKeymaps = config.get<object>("visualKeymaps");
-        let normalCursorStyle = config.get<string>("normalCursorStyle") ?? "block";
-        let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
-        let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
-        let searchCursorStyle = config.get<string>("searchCursorStyle") ?? "underline";
-
-        insertTimeout = insertTimeout && insertTimeout >= 0 ? insertTimeout : null;
-        this.getInsertModal().setTimeout(insertTimeout);
-
-        let styles = {
-            [ModalType.normal]: toVSCodeCursorStyle(normalCursorStyle),
-            [ModalType.insert]: toVSCodeCursorStyle(insertCursorStyle),
-            [ModalType.visual]: toVSCodeCursorStyle(visualCursorStyle),
-            [ModalType.search]: toVSCodeCursorStyle(searchCursorStyle),
-        };
-        this.setCursorStyle(styles);
-
-        this.clearKeymapsAll();
-        this.updateKeymapsFromPreset(preset);
-        this.updateKeymaps({ normalKeymaps, insertKeymaps, visualKeymaps });
+        if (config.normalKeymaps)
+            this.getNormalModal().updateKeymap(config.normalKeymaps);
+        if (config.insertKeymaps)
+            this.getInsertModal().updateKeymap(config.insertKeymaps);
+        if (config.visualKeymaps)
+            this.getVisualModal().updateKeymap(config.visualKeymaps);
     }
 
     _lastSelection: vscode.Selection | null = null;
@@ -496,4 +427,5 @@ class VSModalEditor extends Editor {
 export {
     VSModalEditor,
     CursorMoveDir,
+    CursorStyles
 };

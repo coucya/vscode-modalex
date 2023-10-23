@@ -106,7 +106,6 @@ abstract class Editor extends EventEmitter {
             }
         }
 
-
         if (modal && type_) {
             this._currentModal.onWillLeave();
 

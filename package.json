@@ -2,7 +2,7 @@
     "name": "vscode-modalex",
     "displayName": "ModalEx",
     "description": "",
-    "version": "0.1.9",
+    "version": "0.2.0",
     "publisher": "couc",
     "engines": {
         "vscode": "^1.80.0"
@@ -35,6 +35,14 @@
                     ],
                     "default": "simple",
                     "description": "Preset key mapping."
+                },
+                "modalex.customKeymaps": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "default": null,
+                    "description": "Customize keymaps file path."
                 },
                 "modalex.insertTimeout": {
                     "type": "number",
