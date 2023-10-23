@@ -13,6 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     baseCommands.registerCommands(context);
     actionsCommands.registerCommands(context);
+
     enable();
 }
 

@@ -38,7 +38,15 @@ function _enterInsert(option?: { right: boolean; }) {
         let vsEditor = editor.getVSCodeTextEditor();
 
         let newSelections = [];
-        if (option?.right && !isAtLineEnd()) {
+        if (option?.right && editor.isNormal()) {
+            for (var selection of vsEditor.selections) {
+                let pos = selection.active;
+                if (!editor.isAtLineEnd(selection))
+                    pos = new vscode.Position(pos.line, pos.character + 1);
+                let newSelection = new vscode.Selection(pos, pos);
+                newSelections.push(newSelection);
+            }
+        } else if (option?.right) {
             for (var selection of vsEditor.selections) {
                 let newSelection = new vscode.Selection(selection.end, selection.end);
                 newSelections.push(newSelection);
