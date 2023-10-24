@@ -87,23 +87,11 @@ function _transformTo(upper: boolean) {
     }
 }
 
-function _cursorMove(direction: CursorMoveDir) {
-    let ext = getExtension();
-    let editor = ext.getCurrentEditor();
-    if (!editor)
-        return;
-    editor.cursorMove(direction);
-}
-
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(`${commandPrefix}.paste`, _paste),
         vscode.commands.registerCommand(`${commandPrefix}.transformToUppercase`, () => _transformTo(true)),
         vscode.commands.registerCommand(`${commandPrefix}.transformToLowercase`, () => _transformTo(false)),
-        vscode.commands.registerCommand(`${commandPrefix}.cursorUp`, () => _cursorMove(CursorMoveDir.up)),
-        vscode.commands.registerCommand(`${commandPrefix}.cursorDown`, () => _cursorMove(CursorMoveDir.down)),
-        vscode.commands.registerCommand(`${commandPrefix}.cursorLeft`, () => _cursorMove(CursorMoveDir.left)),
-        vscode.commands.registerCommand(`${commandPrefix}.cursorRight`, () => _cursorMove(CursorMoveDir.right)),
     );
 }
 

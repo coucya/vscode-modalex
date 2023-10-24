@@ -411,15 +411,18 @@ function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent
     let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
     let oldMode = modalEditor?.getCurrentModalType();
 
-    if (isSelection) {
-        if (!modalEditor?.isVisual()) {
+    if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard) {
+        modalEditor?.onSelectionChange();
+    } else if (e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+        if (!modalEditor?.isVisual() && isSelection) {
             modalEditor?.enterMode(ModalType.visual);
-        }
-    } else {
-        if (oldMode !== ModalType.normal && e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+        } else if (oldMode !== ModalType.normal) {
             modalEditor?.enterMode(ModalType.normal);
         }
+    } else if (e.kind === vscode.TextEditorSelectionChangeKind.Command) {
+
     }
+
 }
 
 function initialize(context: vscode.ExtensionContext) {
@@ -433,7 +436,6 @@ let subscriptions: vscode.Disposable[] = [];
 function enable() {
     if (extension)
         return;
-
 
     extension = new Extension();
 

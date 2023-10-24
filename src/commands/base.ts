@@ -18,12 +18,27 @@ function _enterInsert(option?: { right: boolean; }) {
         let vsEditor = editor.getVSCodeTextEditor();
 
         let newSelections = [];
-        if (option?.right && editor.isNormal()) {
+        if (editor.isNormal() && option?.right) {
             for (var selection of vsEditor.selections) {
                 let pos = selection.active;
                 if (!editor.isAtLineEnd(selection))
                     pos = new vscode.Position(pos.line, pos.character + 1);
                 let newSelection = new vscode.Selection(pos, pos);
+                newSelections.push(newSelection);
+            }
+        } else if (editor.isVisual(VisualType.line) && option?.right) {
+            let sl = vsEditor.selection.start.line;
+            let el = vsEditor.selection.end.line;
+            for (var i = sl; i <= el; i++) {
+                let c = editor.lineLength(i) ?? 0;
+                let newSelection = new vscode.Selection(new vscode.Position(i, c), new vscode.Position(i, c));
+                newSelections.push(newSelection);
+            }
+        } else if (editor.isVisual(VisualType.line)) {
+            let sl = vsEditor.selection.start.line;
+            let el = vsEditor.selection.end.line;
+            for (var i = sl; i <= el; i++) {
+                let newSelection = new vscode.Selection(new vscode.Position(i, 0), new vscode.Position(i, 0));
                 newSelections.push(newSelection);
             }
         } else if (option?.right) {

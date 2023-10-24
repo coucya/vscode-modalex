@@ -73,6 +73,9 @@ class VSModalEditor extends Editor {
     _styles: CursorStyles;
     _oldCursorStyle: vscode.TextEditorCursorStyle | undefined;
 
+    _lastSelection: vscode.Selection | null = null;
+    _visaulAnchor: vscode.Position | null = null;
+
     constructor(vsEditor: vscode.TextEditor) {
         super();
 
@@ -118,14 +121,14 @@ class VSModalEditor extends Editor {
 
     override enterMode(modalType: string | ModalType, options?: any): void {
         super.enterMode(modalType, options);
+        if (this.isVisual()) {
+            this._visaulAnchor = this._vsTextEditor.selection.anchor;
+        } else {
+            this._visaulAnchor = null;
+        }
         if (this.isVisual(VisualType.block))
             this.setLastSelection(this._vsTextEditor.selection);
-        if (this.isVisual(VisualType.line)) {
-            let base = this._lineAsSelection(this._vsTextEditor.selection.anchor.line);
-            if (base) {
-                this._vsTextEditor.selections = [base];
-            }
-        }
+
         this.updateCursorStyle();
     }
 
@@ -162,7 +165,6 @@ class VSModalEditor extends Editor {
             this.getVisualModal().updateKeymap(config.visualKeymaps);
     }
 
-    _lastSelection: vscode.Selection | null = null;
     setLastSelection(s: vscode.Selection) { this._lastSelection = s; }
 
     _lineAsSelection(line: number, beg?: number, end?: number): vscode.Selection | undefined {
@@ -197,136 +199,45 @@ class VSModalEditor extends Editor {
         return this._vsTextEditor.selections.some(a => line >= a.start.line && line <= a.end.line);
     }
 
-    __translateSelection(line: number): vscode.Selection | undefined {
-        let document = this._vsTextEditor.document;
-        if (line < 0 || line >= document.lineCount)
-            return undefined;
-
-        if (this.isVisual(VisualType.block) && this._lastSelection) {
-            let s = new vscode.Position(line, this._lastSelection.start.character);
-            let e = new vscode.Position(line, this._lastSelection.end.character);
-            return new vscode.Selection(s, e);
-        } else {
-            let r = document.lineAt(line).range;
-            return new vscode.Selection(r.start, r.end);
-        }
-    }
-    _cursorUp() {
-        let newSelections: readonly vscode.Selection[];
-        if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
-            newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, 0, -1, false);
-            });
-        } else if (this.isVisual(VisualType.normal)) {
-            newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, 0, -1, true);
-            });
-        } else if (this.isVisual(VisualType.line) || this.isVisual(VisualType.block)) {
-            let selection = this._vsTextEditor.selection;
-            let selections = this._vsTextEditor.selections;
-
-            let nextLine = selection.anchor.line - 1;
-            if (nextLine < 0)
-                return;
-            if (!this._selectionContainsLine(nextLine)) {
-                let newSelection = this.__translateSelection(nextLine);
-                newSelections = newSelection ? [newSelection, ...selections] : selections;
-            } else {
-                newSelections = selections.slice(1);
-            };
-        } else {
-            newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, 0, -1, false);
-            });
-        }
-        this._vsTextEditor.selections = newSelections;
-        this._vsTextEditor.revealRange(this._vsTextEditor.selection);
-    }
-    _cursorDown() {
-        let newSelections: readonly vscode.Selection[];
-        if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
-            newSelections = this._vsTextEditor.selections.map((s) => translate(s, 0, 1, false));
-        } else if (this.isVisual(VisualType.normal)) {
-            newSelections = this._vsTextEditor.selections.map((s) => translate(s, 0, 1, true));
-        } else if (this.isVisual(VisualType.line) || this.isVisual(VisualType.block)) {
-            let selection = this._vsTextEditor.selection;
-            let selections = this._vsTextEditor.selections;
-
-            let nextLine = selection.anchor.line + 1;
-            if (nextLine >= this._vsTextEditor.document.lineCount)
-                return;
-            if (!this._selectionContainsLine(nextLine)) {
-                let newSelection = this.__translateSelection(nextLine);
-                newSelections = newSelection ? [newSelection, ...selections] : selections;
-            } else {
-                newSelections = selections.slice(1);
-            };
-        } else {
-            newSelections = this._vsTextEditor.selections.map((s) => translate(s, 0, -1, false));
-        }
-        this._vsTextEditor.selections = newSelections;
-        this._vsTextEditor.revealRange(this._vsTextEditor.selection);
-    }
-
-    _cursorLeft() {
-        let newSelections: vscode.Selection[] | undefined;
-        if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
-            newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, -1, 0, false, this.lineLength(s.anchor.line));
-            });
-        } else if (this.isVisual(VisualType.normal)) {
-            newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, -1, 0, true, this.lineLength(s.anchor.line));
-            });
-        } else if (this.isVisual(VisualType.line)) {
-            // nothing
-        } else if (this.isVisual(VisualType.block)) {
-            newSelections = this._vsTextEditor.selections.map((s) => translate(s, -1, 0, true));
-        }
-
-        let maxSelection = newSelections && maxWidthSelection(newSelections);
-        if (maxSelection)
-            this.setLastSelection(maxSelection);
-        if (newSelections)
-            this._vsTextEditor.selections = newSelections;
-    }
-
-    _cursorRight() {
-        let newSelections: vscode.Selection[] | undefined;
-        if (this._currentModalType === ModalType.normal || this._currentModalType === ModalType.insert) {
-            newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, 1, 0, false, this.lineLength(s.anchor.line));
-            });
-        } else if (this._currentModalType === ModalType.visual) {
-            newSelections = this._vsTextEditor.selections.map((s) => {
-                return translate(s, 1, 0, true, this.lineLength(s.anchor.line));
-            });
-        } else if (this.isVisual(VisualType.line)) {
-            // nothing
-        } else if (this.isVisual(VisualType.block)) {
-            newSelections = this._vsTextEditor.selections.map((s) => translate(s, 1, 0, true));
-        }
-
-        let maxSelection = newSelections && maxWidthSelection(newSelections);
-        if (maxSelection)
-            this.setLastSelection(maxSelection);
-        if (newSelections)
-            this._vsTextEditor.selections = newSelections;
-    }
-
-    cursorMove(direction: CursorMoveDir) {
-        if (direction === CursorMoveDir.up) {
-            this._cursorUp();
-        } else if (direction === CursorMoveDir.down) {
-            this._cursorDown();
-        } else if (direction === CursorMoveDir.left) {
-            this._cursorLeft();
-        } else if (direction === CursorMoveDir.right) {
-            this._cursorRight();
-        }
-    }
-
     onSelectionChange() {
+        if (this._visaulAnchor) {
+            if (this.isVisual(VisualType.normal)) {
+                let newSelection = new vscode.Selection(this._visaulAnchor, this._vsTextEditor.selection.active);
+                this._vsTextEditor.selection = newSelection;
+            } else if (this.isVisual(VisualType.line)) {
+                let startLine = this._visaulAnchor.line;
+                let endLine = this._vsTextEditor.selection.active.line;
+
+                let start, end;
+                if (startLine <= endLine) {
+                    start = new vscode.Position(startLine, 0);
+                    end = new vscode.Position(endLine, this.lineLength(endLine) ?? 0);
+                } else {
+                    start = new vscode.Position(startLine, this.lineLength(startLine) ?? 0);
+                    end = new vscode.Position(endLine, 0);
+                }
+                let newSelection = new vscode.Selection(start, end);
+                this._vsTextEditor.selection = newSelection;
+            } else if (this.isVisual(VisualType.block)) {
+                let startLine = this._visaulAnchor.line;
+                let startChar = this._visaulAnchor.character;
+                let endLine = this._vsTextEditor.selection.active.line;
+                let endChar = this._vsTextEditor.selection.active.character;
+
+                let newSelections = [];
+                let sc = startChar <= endChar ? startChar : endChar;
+                let ec = startChar <= endChar ? endChar : startChar;
+                let sl = startLine <= endLine ? startLine : endLine;
+                let el = startLine <= endLine ? endLine : startLine;
+                for (var i = sl; i <= el; i++) {
+                    let sp = new vscode.Position(i, sc);
+                    let ep = new vscode.Position(i, ec);
+                    let newSelection = new vscode.Selection(sp, ep);
+                    newSelections.push(newSelection);
+                }
+                this._vsTextEditor.selections = newSelections.reverse();
+            }
+        }
     }
 
     _getLineRange(at: vscode.Position | number, after?: boolean) {

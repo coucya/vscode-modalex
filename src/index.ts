@@ -2,10 +2,7 @@ import * as vscode from 'vscode';
 import * as baseCommands from './commands/base';
 import * as actionsCommands from './commands/actions';
 
-import {
-    initialize,
-    enable, disable,
-} from "./extension";
+import { initialize, enable, disable, } from "./extension";
 
 
 export function activate(context: vscode.ExtensionContext) {
