@@ -407,22 +407,20 @@ function doDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent) {
     if (!extension) return;
 
-    let isSelection = e.selections.some((s) => !s.isEmpty);
-    let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
-    let oldMode = modalEditor?.getCurrentModalType();
 
-    if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard) {
-        modalEditor?.onSelectionChange();
-    } else if (e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
-        if (!modalEditor?.isVisual() && isSelection) {
-            modalEditor?.enterMode(ModalType.visual);
-        } else if (oldMode !== ModalType.normal) {
-            modalEditor?.enterMode(ModalType.normal);
-        }
-    } else if (e.kind === vscode.TextEditorSelectionChangeKind.Command) {
-
+    log(`===== onDidChangeTextEditorSelection, kind ${e.kind} =====`);
+    log("e.selections:");
+    for (var s of e.selections) {
+        log(`  Selection(${s.start.line}, ${s.start.character}, ${s.end.line}, ${s.end.character})`);
     }
+    log("e.textEditor.selections:");
+    for (var s of e.textEditor.selections) {
+        log(`  Selection(${s.start.line}, ${s.start.character}, ${s.end.line}, ${s.end.character})`);
+    }
+    log("===== end =====\n");
 
+    let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
+    modalEditor?.onSelectionChange(e.selections, e.kind);
 }
 
 function initialize(context: vscode.ExtensionContext) {
