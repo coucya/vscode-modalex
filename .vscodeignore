@@ -4,6 +4,7 @@ docs/**
 out/**
 src/**
 dist/*.map
+.VSCodeCounter
 .gitignore
 pnpm-lock.yaml
 tsconfig.json

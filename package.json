@@ -1,8 +1,8 @@
 {
     "name": "vscode-modalex",
     "displayName": "ModalEx",
-    "description": "",
-    "version": "0.2.1",
+    "description": "A vscode modal editing extension, similar to vim (Including normal, insert, visual, search), and provides vim key presets (todo).",
+    "version": "0.2.2",
     "publisher": "couc",
     "engines": {
         "vscode": "^1.80.0"
@@ -16,8 +16,8 @@
         "modal",
         "vim"
     ],
-    "repository": "",
-    "homepage": "",
+    "repository": "https://github.com/coucya/vscode-modalex",
+    "homepage": "https://github.com/coucya/vscode-modalex",
     "activationEvents": [
         "onStartupFinished"
     ],
@@ -88,156 +88,159 @@
                     "default": "line-thin",
                     "description": "Shape of the cursor when selection is active in normal mode."
                 },
-                "modalex.insertKeymaps": {
+                "modalex.keymaps": {
                     "type": "object",
                     "default": {},
-                    "patternProperties": {
-                        "^.([\\-,].)*$": {
-                            "anyOf": [
-                                {
-                                    "type": "string",
-                                    "description": "VSCode command"
-                                },
-                                {
-                                    "type": "array",
-                                    "description": "Sequence of commands",
-                                    "items": {
-                                        "anyOf": [
-                                            {
-                                                "type": "object",
-                                                "description": "Action"
-                                            },
-                                            {
-                                                "type": "string",
-                                                "description": "VSCode command"
-                                            }
-                                        ]
-                                    }
-                                },
-                                {
-                                    "type": "object",
-                                    "description": "keymap or VSCode command with arguments",
-                                    "properties": {
-                                        "command": {
+                    "properties": {
+                        "insert": {
+                            "type": "object",
+                            "patternProperties": {
+                                "^.([\\-,].)*$": {
+                                    "anyOf": [
+                                        {
                                             "type": "string",
                                             "description": "VSCode command"
                                         },
-                                        "args": {
-                                            "description": "Command arguments",
-                                            "anyOf": [
-                                                {
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "type": "string"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                },
-                "modalex.normalKeymaps": {
-                    "type": "object",
-                    "default": {},
-                    "patternProperties": {
-                        "^.([\\-,].)*$": {
-                            "anyOf": [
-                                {
-                                    "type": "string",
-                                    "description": "VSCode command"
-                                },
-                                {
-                                    "type": "array",
-                                    "description": "Sequence of commands",
-                                    "items": {
-                                        "anyOf": [
-                                            {
-                                                "type": "object",
-                                                "description": "Action"
-                                            },
-                                            {
-                                                "type": "string",
-                                                "description": "VSCode command"
+                                        {
+                                            "type": "array",
+                                            "description": "Sequence of commands",
+                                            "items": {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "object",
+                                                        "description": "Action"
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "description": "VSCode command"
+                                                    }
+                                                ]
                                             }
-                                        ]
-                                    }
-                                },
-                                {
-                                    "type": "object",
-                                    "description": "VSCode command with arguments",
-                                    "properties": {
-                                        "command": {
+                                        },
+                                        {
+                                            "type": "object",
+                                            "description": "VSCode command with arguments",
+                                            "properties": {
+                                                "command": {
+                                                    "type": "string",
+                                                    "description": "VSCode command"
+                                                },
+                                                "args": {
+                                                    "description": "Command arguments",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object"
+                                                        },
+                                                        {
+                                                            "type": "string"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "normal": {
+                            "type": "object",
+                            "patternProperties": {
+                                "^.([\\-,].)*$": {
+                                    "anyOf": [
+                                        {
                                             "type": "string",
                                             "description": "VSCode command"
                                         },
-                                        "args": {
-                                            "description": "Command arguments",
-                                            "anyOf": [
-                                                {
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "type": "string"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                },
-                "modalex.visualKeymaps": {
-                    "type": "object",
-                    "default": {},
-                    "patternProperties": {
-                        "^.([\\-,].)*$": {
-                            "anyOf": [
-                                {
-                                    "type": "string",
-                                    "description": "VSCode command"
-                                },
-                                {
-                                    "type": "array",
-                                    "description": "Sequence of commands",
-                                    "items": {
-                                        "anyOf": [
-                                            {
-                                                "type": "object",
-                                                "description": "Action"
-                                            },
-                                            {
-                                                "type": "string",
-                                                "description": "VSCode command"
+                                        {
+                                            "type": "array",
+                                            "description": "Sequence of commands",
+                                            "items": {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "object",
+                                                        "description": "Action"
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "description": "VSCode command"
+                                                    }
+                                                ]
                                             }
-                                        ]
-                                    }
-                                },
-                                {
-                                    "type": "object",
-                                    "description": "VSCode command with arguments",
-                                    "properties": {
-                                        "command": {
+                                        },
+                                        {
+                                            "type": "object",
+                                            "description": "VSCode command with arguments",
+                                            "properties": {
+                                                "command": {
+                                                    "type": "string",
+                                                    "description": "VSCode command"
+                                                },
+                                                "args": {
+                                                    "description": "Command arguments",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object"
+                                                        },
+                                                        {
+                                                            "type": "string"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "visual": {
+                            "type": "object",
+                            "patternProperties": {
+                                "^.([\\-,].)*$": {
+                                    "anyOf": [
+                                        {
                                             "type": "string",
                                             "description": "VSCode command"
                                         },
-                                        "args": {
-                                            "description": "Command arguments",
-                                            "anyOf": [
-                                                {
-                                                    "type": "object"
+                                        {
+                                            "type": "array",
+                                            "description": "Sequence of commands",
+                                            "items": {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "object",
+                                                        "description": "Action"
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "description": "VSCode command"
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "description": "VSCode command with arguments",
+                                            "properties": {
+                                                "command": {
+                                                    "type": "string",
+                                                    "description": "VSCode command"
                                                 },
-                                                {
-                                                    "type": "string"
+                                                "args": {
+                                                    "description": "Command arguments",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object"
+                                                        },
+                                                        {
+                                                            "type": "string"
+                                                        }
+                                                    ]
                                                 }
-                                            ]
+                                            }
                                         }
-                                    }
+                                    ]
                                 }
-                            ]
+                            }
                         }
                     }
                 }
@@ -267,6 +270,7 @@
     },
     "scripts": {
         "package": "pnpm run webpack & vsce package --no-dependencies",
+        "publish": "vsce publish --no-dependencies",
         "webpack": "webpack --mode production",
         "webpack-dev": "webpack --mode development"
     },
