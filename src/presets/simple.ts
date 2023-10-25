@@ -12,13 +12,14 @@ let normal = {
     j: "cursorDown",
     k: "cursorUp",
     l: "cursorRight",
-    J: ["cursorDown", "cursorDown", "scrollLineDown", "scrollLineDown"],
-    K: ["cursorUp", "cursorUp", "scrollLineUp", "scrollLineUp"],
-    H: "cursorHome",
-    L: "cursorEnd",
+    W: "cursorWordStartRight",
     w: "cursorWordStartRight",
-    e: "cursorWordEndRight",
     b: "cursorWordStartLeft",
+    B: "cursorWordStartLeft",
+    e: "cursorWordEndRight",
+    E: "cursorWordEndRight",
+    x: "deleteRight",
+    X: "deleteLeft",
     o: [
         "editor.action.insertLineAfter",
         "modalex.enterInsert"
@@ -27,21 +28,81 @@ let normal = {
         "editor.action.insertLineBefore",
         "modalex.enterInsert"
     ],
-    x: "deleteRight",
     d: {
-        d: "editor.action.deleteLines",
-        w: "deleteWordRight",
+        d: [
+            {
+                "command": "cursorMove",
+                "args": {
+                    "to": "wrappedLine"
+                }
+            },
+            "editor.action.clipboardCutAction"
+        ],
         b: "deleteWordLeft",
+        e: "deleteWordRight",
+        w: "deleteWordRight"
     },
-    g: {
-        "g": "",
-        "d": "editor.action.revealDefinition"
+    "y": {
+        "y": [
+            {
+                "command": "cursorMove",
+                "args": {
+                    "to": "wrappedLine"
+                }
+            },
+            "editor.action.clipboardCopyAction"
+        ]
     },
+    v: "modalex.enterVisual",
+    V: "modalex.enterVisualLine",
+    p: "modalex.action.paste",
+    P: "editor.action.clipboardPasteAction",
+    f: "modalex.searchCharLineAfter",
+    F: "modalex.searchCharLineBefore",
+    "/": "modalex.searchAfter",
+    "?": "modalex.searchBefore",
+    n: "modalex.searchNext",
+    N: "modalex.searchPrev",
     u: "undo",
 };
 
 let visual = {
-    "d,x": "deleteRight",
+    h: "cursorLeftSelect",
+    j: "cursorDownSelect",
+    k: "cursorUpSelect",
+    l: "cursorRightSelect",
+    I: "modalex.enterInsert",
+    A: {
+        "command": "modalex.enterInsert",
+        "args": {
+            "right": true
+        }
+    },
+    w: "cursorWordStartRightSelect",
+    e: "cursorWordRightSelect",
+    b: "cursorWordLeftSelect",
+    y: [
+        "editor.action.clipboardCopyAction",
+        "modalex.enterNormal"
+    ],
+    Y: [
+        "editor.action.clipboardCopyAction",
+        "modalex.enterNormal"
+    ],
+    p: [
+        "modalex.action.paste",
+        "modalex.enterNormal"
+    ],
+    "d,x": [
+        "editor.action.clipboardCutAction",
+        "modalex.enterNormal"
+    ],
+    t: {
+        "u": "modalex.action.transformToUppercase",
+        "l": "modalex.action.transformToLowercase"
+    },
+    f: "modalex.searchCharLineAfter",
+    F: "modalex.searchCharLineBefore"
 };
 
 export {

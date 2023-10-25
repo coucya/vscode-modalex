@@ -377,7 +377,10 @@ async function doDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor
 
 function doDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
     try {
-        if (extension) extension.updateConfig();
+        if (extension) {
+            extension.updateConfig();
+            log("configuration update.");
+        }
     } catch (e) {
         if (e instanceof Error) {
             notifyError("error updating from configuration.\n" + e.message);
