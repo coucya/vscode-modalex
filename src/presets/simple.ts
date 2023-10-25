@@ -1,4 +1,6 @@
-let normalKeymaps = {
+let insert = {};
+
+let normal = {
     i: "modalex.enterInsert",
     a: {
         "command": "modalex.enterInsert",
@@ -37,15 +39,13 @@ let normalKeymaps = {
     },
     u: "undo",
 };
-let insertKeymaps = {
 
-};
-let visualKeymaps = {
+let visual = {
     "d,x": "deleteRight",
 };
 
 export {
-    normalKeymaps,
-    insertKeymaps,
-    visualKeymaps
+    normal,
+    insert,
+    visual
 };

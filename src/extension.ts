@@ -3,12 +3,15 @@ import { EventEmitter } from "events";
 
 import { ModalType } from './modal/modal';
 import { Keymap } from './modal/keymap';
-import { ParseKeymapConfigObj as parseKeymapConfigObj } from './modal/parser';
+import { ParseKeymapConfigObj as parseKeymapObj } from './modal/parser';
 
 import { extensionName, extensionDisplayName } from "./config";
-import { VSModalEditor } from "./VSEditor";
+import { ExtConfig } from "./config";
 
 import * as presetSimple from "./presets/simple";
+
+import { VSModalEditor } from "./VSEditor";
+
 
 const presets = {
     simple: presetSimple
@@ -55,27 +58,6 @@ async function readFileAsString(path: string): Promise<string | undefined> {
     }
 }
 
-type ExtConfig = {
-    preset: null | {
-        normalKeymaps: Keymap,
-        insertKeymaps: Keymap,
-        visualKeymaps: Keymap,
-    },
-    customKeymaps: null | {
-        normalKeymaps: Keymap,
-        insertKeymaps: Keymap,
-        visualKeymaps: Keymap,
-    },
-    normalKeymaps: Keymap,
-    insertKeymaps: Keymap,
-    visualKeymaps: Keymap,
-    insertTimeout: number | null,
-    normalCursorStyle: vscode.TextEditorCursorStyle;
-    insertCursorStyle: vscode.TextEditorCursorStyle;
-    visualCursorStyle: vscode.TextEditorCursorStyle;
-    searchCursorStyle: vscode.TextEditorCursorStyle;
-};
-
 function toVSCodeCursorStyle(style: string): vscode.TextEditorCursorStyle {
     switch (style.toLowerCase()) {
         case "block": return vscode.TextEditorCursorStyle.Block;
@@ -98,27 +80,27 @@ async function loadCustomKeymaps(path: string) {
     if (!p)
         return null;
 
-    let normalKeymapsObj = p.normalKeymaps;
-    let insertKeymapsObj = p.insertKeymaps;
-    let visualKeymapsObj = p.visualKeymaps;
-    if (typeof normalKeymapsObj !== "object")
-        normalKeymapsObj = {};
-    if (typeof insertKeymapsObj !== "object")
-        insertKeymapsObj = {};
-    if (typeof visualKeymapsObj !== "object")
-        visualKeymapsObj = {};
+    let normalKeymapObj = p.normal;
+    let insertKeymapObj = p.insert;
+    let visualKeymapObj = p.visual;
+    if (typeof normalKeymapObj !== "object")
+        normalKeymapObj = {};
+    if (typeof insertKeymapObj !== "object")
+        insertKeymapObj = {};
+    if (typeof visualKeymapObj !== "object")
+        visualKeymapObj = {};
 
-    let normalKeymaps = parseKeymapConfigObj(normalKeymapsObj);
-    let insertKeymaps = parseKeymapConfigObj(insertKeymapsObj);
-    let visualKeymaps = parseKeymapConfigObj(visualKeymapsObj);
+    let normal = parseKeymapObj(normalKeymapObj);
+    let insert = parseKeymapObj(insertKeymapObj);
+    let visual = parseKeymapObj(visualKeymapObj);
 
-    return { normalKeymaps, insertKeymaps, visualKeymaps };
+    return { normal, insert, visual };
 }
 
 function asPresetKeymaps(preset: string): {
-    normalKeymaps: Keymap,
-    insertKeymaps: Keymap,
-    visualKeymaps: Keymap,
+    normal: Keymap,
+    insert: Keymap,
+    visual: Keymap,
 } | null {
     if (preset === "none")
         return null;
@@ -127,21 +109,21 @@ function asPresetKeymaps(preset: string): {
     if (!p)
         return null;
 
-    let normalKeymapsObj = p.normalKeymaps;
-    let insertKeymapsObj = p.insertKeymaps;
-    let visualKeymapsObj = p.visualKeymaps;
-    if (typeof normalKeymapsObj !== "object")
-        normalKeymapsObj = {};
-    if (typeof insertKeymapsObj !== "object")
-        insertKeymapsObj = {};
-    if (typeof visualKeymapsObj !== "object")
-        visualKeymapsObj = {};
+    let normalKeymapObj = p.normal;
+    let insertKeymapObj = p.insert;
+    let visualKeymapObj = p.visual;
+    if (typeof normalKeymapObj !== "object")
+        normalKeymapObj = {};
+    if (typeof insertKeymapObj !== "object")
+        insertKeymapObj = {};
+    if (typeof visualKeymapObj !== "object")
+        visualKeymapObj = {};
 
-    let normalKeymaps = parseKeymapConfigObj(normalKeymapsObj);
-    let insertKeymaps = parseKeymapConfigObj(insertKeymapsObj);
-    let visualKeymaps = parseKeymapConfigObj(visualKeymapsObj);
+    let normal = parseKeymapObj(normalKeymapObj);
+    let insert = parseKeymapObj(insertKeymapObj);
+    let visual = parseKeymapObj(visualKeymapObj);
 
-    return { normalKeymaps, insertKeymaps, visualKeymaps };
+    return { normal, insert, visual };
 }
 
 async function asExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtConfig> {
@@ -150,17 +132,18 @@ async function asExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtCo
 
     let customKeymapsPath = config.get<string | null>("customKeymaps");
 
-    let normalKeymapsObj = config.get<object>("normalKeymaps") ?? {};
-    let insertKeymapsObj = config.get<object>("insertKeymaps") ?? {};
-    let visualKeymapsObj = config.get<object>("visualKeymaps") ?? {};
+    let keymaps: any = config.get<object>("keymaps") ?? {};
+    let normalKeymapObj = keymaps?.normal ?? {};
+    let insertKeymapObj = keymaps?.insert ?? {};
+    let visualKeymapObj = keymaps?.visual ?? {};
     let normalCursorStyle = config.get<string>("normalCursorStyle") ?? "block";
     let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
     let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
     let searchCursorStyle = config.get<string>("searchCursorStyle") ?? "underline";
 
-    let normalKeymaps = parseKeymapConfigObj(normalKeymapsObj);
-    let insertKeymaps = parseKeymapConfigObj(insertKeymapsObj);
-    let visualKeymaps = parseKeymapConfigObj(visualKeymapsObj);
+    let normalKeymap = parseKeymapObj(normalKeymapObj);
+    let insertKeymap = parseKeymapObj(insertKeymapObj);
+    let visualKeymap = parseKeymapObj(visualKeymapObj);
 
     let presetKeymaps = asPresetKeymaps(preset);
     let customKeymaps = customKeymapsPath ? await loadCustomKeymaps(customKeymapsPath) : null;
@@ -170,9 +153,11 @@ async function asExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtCo
     let setting = {
         preset: presetKeymaps,
         customKeymaps,
-        normalKeymaps,
-        insertKeymaps,
-        visualKeymaps,
+        keymaps: {
+            normal: normalKeymap,
+            insert: insertKeymap,
+            visual: visualKeymap,
+        },
         insertTimeout,
         normalCursorStyle: toVSCodeCursorStyle(normalCursorStyle),
         insertCursorStyle: toVSCodeCursorStyle(insertCursorStyle),
@@ -315,7 +300,7 @@ class Extension extends EventEmitter {
             editor.updateKeymaps(config.preset);
         if (config.customKeymaps)
             editor.updateKeymaps(config.customKeymaps);
-        editor.updateKeymaps(config);
+        editor.updateKeymaps(config.keymaps);
     }
 
     async updateConfig() {

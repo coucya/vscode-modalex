@@ -169,16 +169,16 @@ class VSModalEditor extends Editor {
     }
 
     updateKeymaps(config: {
-        normalKeymaps?: Keymap,
-        insertKeymaps?: Keymap;
-        visualKeymaps?: Keymap;
+        normal?: Keymap,
+        insert?: Keymap;
+        visual?: Keymap;
     }) {
-        if (config.normalKeymaps)
-            this.getNormalModal().updateKeymap(config.normalKeymaps);
-        if (config.insertKeymaps)
-            this.getInsertModal().updateKeymap(config.insertKeymaps);
-        if (config.visualKeymaps)
-            this.getVisualModal().updateKeymap(config.visualKeymaps);
+        if (config.normal)
+            this.getNormalModal().updateKeymap(config.normal);
+        if (config.insert)
+            this.getInsertModal().updateKeymap(config.insert);
+        if (config.visual)
+            this.getVisualModal().updateKeymap(config.visual);
     }
 
     _lineAsSelection(line: number, beg?: number, end?: number): vscode.Selection | undefined {
