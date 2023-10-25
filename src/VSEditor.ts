@@ -42,8 +42,15 @@ function maxWidthSelection(selections: readonly vscode.Selection[]): vscode.Sele
 
 
 class VSSearchModal extends SearchModal {
+    _oldModalType: ModalType = ModalType.normal;
+
     constructor(name: string, editor: Editor) {
         super(name, editor);
+    }
+
+    override onWillEnter(option?: any): void | Thenable<void> {
+        super.onWillEnter(option);
+        this._oldModalType = this._editor.getCurrentModalType();
     }
 
     override onConfirm(): void | Thenable<void> {
@@ -53,6 +60,8 @@ class VSSearchModal extends SearchModal {
         let nextCursor: vscode.Position | undefined;
         if (dir === SearchDirection.after) {
             nextCursor = editor.nextMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
+            if (this._oldModalType === ModalType.visual)
+                nextCursor = nextCursor?.translate(0, 1);
         } else if (dir === SearchDirection.before) {
             nextCursor = editor.prevMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
         } else {
@@ -60,7 +69,7 @@ class VSSearchModal extends SearchModal {
             // TODO
         }
         setTimeout(() => {
-            editor.enterMode("normal");
+            editor.enterMode(this._oldModalType);
             if (nextCursor) {
                 editor.getVSCodeTextEditor().selection = new vscode.Selection(nextCursor, nextCursor);
             }

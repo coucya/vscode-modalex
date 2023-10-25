@@ -319,7 +319,7 @@ class Extension extends EventEmitter {
     }
 
     async updateConfig() {
-        this._updateConfig();
+        await this._updateConfig();
         for (var editor of this._editors.values())
             this._updateEditorConfig(editor);
     }
@@ -407,17 +407,16 @@ function doDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent) {
     if (!extension) return;
 
-
-    log(`===== onDidChangeTextEditorSelection, kind ${e.kind} =====`);
-    log("e.selections:");
-    for (var s of e.selections) {
-        log(`  Selection(${s.start.line}, ${s.start.character}, ${s.end.line}, ${s.end.character})`);
-    }
-    log("e.textEditor.selections:");
-    for (var s of e.textEditor.selections) {
-        log(`  Selection(${s.start.line}, ${s.start.character}, ${s.end.line}, ${s.end.character})`);
-    }
-    log("===== end =====\n");
+    // log(`===== onDidChangeTextEditorSelection, kind ${e.kind} =====`);
+    // log("e.selections:");
+    // for (var s of e.selections) {
+    //     log(`  Selection(${s.start.line}, ${s.start.character}, ${s.end.line}, ${s.end.character})`);
+    // }
+    // log("e.textEditor.selections:");
+    // for (var s of e.textEditor.selections) {
+    //     log(`  Selection(${s.start.line}, ${s.start.character}, ${s.end.line}, ${s.end.character})`);
+    // }
+    // log("===== end =====\n");
 
     let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
     modalEditor?.onSelectionChange(e.selections, e.kind);
@@ -471,9 +470,9 @@ function disable() {
 }
 
 function reloadConfig() {
-    extension?.updateConfig();
-
-    log("reload config");
+    extension?.updateConfig().then(() => {
+        log("reload config");
+    });
 }
 
 export {
