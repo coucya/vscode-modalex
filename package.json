@@ -2,7 +2,7 @@
     "name": "vscode-modalex",
     "displayName": "ModalEx",
     "description": "A vscode modal editing extension, similar to vim (Including normal, insert, visual, search), and provides vim key presets (todo).",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "publisher": "couc",
     "engines": {
         "vscode": "^1.80.0"
