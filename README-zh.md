@@ -24,7 +24,7 @@ insertTimeout 只对 insert 模式下进行了绑定的键有效，没有进行�
 ModalEx支持自定义键绑定，你可以在vscode的设置中找到keymaps选项，或者提供一个自定义的键绑定json文件。
 
 ### 格式
-``` json
+``` jsonc
 // 在 vscode 设置文件里：
 {
     ...
@@ -55,19 +55,19 @@ ModalEx支持自定义键绑定，你可以在vscode的设置中找到keymaps选
     }
 }
 ```
-``` json 
+``` jsonc
 "normal": {
     // 一些设置仅在 normal 模式下生效。
     "a": "<command>",           // 按下 a 键，执行 <command> 命令。
     "b": {                      // 带参数的命令。
         "command": "<command>", // 按下 b 键，执行 <command> 命令。
-        "args": <any>,          // 可选，执行命令时使用参数。
+        "args": "<any>"         // 可选，执行命令时使用参数。
     },
     "c": [                      // 可以是一个数组组成的命令序列。
         "<command1>",           // 命令序列里的项可以是一个字符串命令。
         {                       // 也可以是带参数的命令。
             "command": "<command2>", 
-            "args": <any>
+            "args": "<any>"
         }
     ],
     "d-f": "<command>",         // 按下 c 到 f 之间的任意键（包含 c 和 f），执行 <command> 命令。

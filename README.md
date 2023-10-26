@@ -22,7 +22,7 @@ insertTimeout only works for keys that have been bound in insert mode. Keys that
 ModalEx supports custom key bindings, which you can find in the vscode settings under the keymaps option, or provide a custom key binding json file.
 
 ### Format
-``` json
+``` jsonc
 // In the vscode settings file:
 {
     ...
@@ -53,19 +53,19 @@ ModalEx supports custom key bindings, which you can find in the vscode settings 
     }
 }
 ```
-``` json 
+``` jsonc
 "normal": {
     // Some settings only take effect in normal mode.
     "a": "<command>",           // Press the a key to execute the <command> command.
     "b": {                      // Command with arguments.
         "command": "<command>", // Press the b key to execute the <command> command.
-        "args": <any>,          // Optional, use arguments when executing the command.
+        "args": "<any>"         // Optional, use arguments when executing the command.
     },
     "c": [                      // Can be an array of command sequences.
         "<command1>",           // Items in the command sequence can be a string command.
         {                       // Or a command with arguments.
             "command": "<command2>", 
-            "args": <any>
+            "args": "<any>"
         }
     ],
     "d-f": "<command>",         // Press any key between c and f (including c and f) to execute the <command> command.
