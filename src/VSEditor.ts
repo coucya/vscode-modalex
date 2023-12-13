@@ -40,6 +40,9 @@ function maxWidthSelection(selections: readonly vscode.Selection[]): vscode.Sele
     return maxSelection;
 }
 
+function selectionToString(selection: vscode.Selection): string {
+    return `${selection.anchor.line}:${selection.anchor.character} - ${selection.active.line}:${selection.active.character}`;
+}
 
 class VSSearchModal extends SearchModal {
     _oldModalType: ModalType = ModalType.normal;
@@ -272,8 +275,10 @@ class VSModalEditor extends Editor {
             this._vsTextEditor.selections = newSelections;
         }
     }
+
     onSelectionChange(selections: readonly vscode.Selection[], kind: vscode.TextEditorSelectionChangeKind | undefined) {
         let selection: vscode.Selection = selections[0];
+
         if (kind === vscode.TextEditorSelectionChangeKind.Mouse) {
             let isSelection = selections.some((s) => !s.isEmpty);
             let oldMode = this.getCurrentModalType();
@@ -287,7 +292,6 @@ class VSModalEditor extends Editor {
             this._onSelectionChange(selections);
             this._lastSelection = this._vsTextEditor.selection;
         }
-
     }
 
     _getLineRange(at: vscode.Position | number, after?: boolean) {

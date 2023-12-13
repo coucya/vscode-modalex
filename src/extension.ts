@@ -18,7 +18,7 @@ const presets = {
 };
 
 let channel: vscode.OutputChannel | null = null;
-var extension: Extension | null = null;
+let _extension: Extension | null = null;
 
 function log(msg: string) {
     if (channel) channel.appendLine(`[ info] ${msg}`);
@@ -168,11 +168,18 @@ async function asExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtCo
     return setting;
 }
 
+type CompositionState = {
+    compositionText: string,
+    isInComposition: boolean,
+};
+
 class Extension extends EventEmitter {
     _config: ExtConfig | null;
     _statusBar: vscode.StatusBarItem;
     _editors: Map<vscode.TextEditor, VSModalEditor>;
     _curEditor: VSModalEditor | null;
+
+    compositionState: CompositionState;
 
     constructor() {
         super();
@@ -181,6 +188,11 @@ class Extension extends EventEmitter {
         this._statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         this._editors = new Map();
         this._curEditor = null;
+
+        this.compositionState = {
+            compositionText: "",
+            isInComposition: false,
+        };
     }
 
     destroy() {
@@ -242,6 +254,10 @@ class Extension extends EventEmitter {
         }
         log(`setCurrentEditor: "${this._curEditor?.getVSCodeTextEditor().document.fileName ?? null}"`);
         this.updateStatusBarText();
+    }
+
+    isInInsertMode(): boolean {
+        return this._curEditor?.getCurrentModal()?.getName() === "insert";
     }
 
     getSearchText(): string {
@@ -331,14 +347,19 @@ class Extension extends EventEmitter {
 }
 
 function getExtension(): Extension {
-    if (!extension)
+    if (!_extension)
         throw Error("ModalEx extension not enabled");
-    return extension;
+    return _extension;
 }
 
 async function onType(args: { text: string; }) {
     try {
-        if (extension) {
+        let extension = getExtension();
+        if (extension.compositionState.isInComposition) {
+            extension.compositionState.compositionText += args.text;
+            if (extension.isInInsertMode())
+                vscode.commands.executeCommand("default:type", args);
+        } else {
             await extension.emitKeys(args.text);
         }
     } catch (e) {
@@ -352,7 +373,59 @@ async function onType(args: { text: string; }) {
     }
 }
 
+async function onReplacePreviousChar(args: { text: string; replaceCharCnt: number; }) {
+    let extension = getExtension();
+    let cs = extension.compositionState;
+
+    cs.compositionText = cs.compositionText.slice(0, -args.replaceCharCnt) + args.text;
+
+    if (extension.isInInsertMode()) {
+        await vscode.commands.executeCommand("default:replacePreviousChar", args);
+    } else {
+        await vscode.commands.executeCommand("default:replacePreviousChar", {
+            text: "",
+            replaceCharCnt: 0,
+        });
+    }
+}
+
+async function onCompositionStart() {
+    let extension = getExtension();
+    extension.compositionState.isInComposition = true;
+    extension.compositionState.compositionText = "";
+}
+
+async function onCompositionEnd() {
+    let extension = getExtension();
+    let cs = extension.compositionState;
+
+    let compositionText = cs.compositionText;
+    cs.isInComposition = false;
+    cs.compositionText = "";
+
+    if (extension.isInInsertMode()) {
+        await vscode.commands.executeCommand('default:replacePreviousChar', {
+            text: '',
+            replaceCharCnt: compositionText.length,
+        });
+    }
+
+    try {
+        await extension.emitKeys(compositionText);
+    } catch (e) {
+        if (e instanceof Error) {
+            notifyError(e.message);
+            logError(e.message);
+        } else {
+            notifyError(`error processing key "${compositionText}"`);
+            logError(`unknown error when processing key "${compositionText}"`);
+        }
+    }
+
+}
+
 function doDidChangeActiveTextEditor(e: vscode.TextEditor | undefined) {
+    let extension = getExtension();
     if (e && extension) {
         if (!extension.exist(e)) {
             extension.onNewEditor(e);
@@ -364,7 +437,7 @@ function doDidChangeActiveTextEditor(e: vscode.TextEditor | undefined) {
 }
 
 async function doDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor[]) {
-    if (!extension) return;
+    let extension = getExtension();
 
     let missing: vscode.TextEditor[] = extension.getMissingEditor(editors);
     let extra: vscode.TextEditor[] = extension.getExtraEditor(editors);
@@ -377,10 +450,9 @@ async function doDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor
 
 function doDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
     try {
-        if (extension) {
-            extension.updateConfig();
-            log("configuration update.");
-        }
+        let extension = getExtension();
+        extension.updateConfig();
+        log("configuration update.");
     } catch (e) {
         if (e instanceof Error) {
             notifyError("error updating from configuration.\n" + e.message);
@@ -393,18 +465,10 @@ function doDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 }
 
 function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent) {
-    if (!extension) return;
+    if (e.textEditor.document.uri.scheme === "output")
+        return;
 
-    // log(`===== onDidChangeTextEditorSelection, kind ${e.kind} =====`);
-    // log("e.selections:");
-    // for (var s of e.selections) {
-    //     log(`  Selection(${s.start.line}, ${s.start.character}, ${s.end.line}, ${s.end.character})`);
-    // }
-    // log("e.textEditor.selections:");
-    // for (var s of e.textEditor.selections) {
-    //     log(`  Selection(${s.start.line}, ${s.start.character}, ${s.end.line}, ${s.end.character})`);
-    // }
-    // log("===== end =====\n");
+    let extension = getExtension();
 
     let modalEditor = extension.getByVSCodeTextEditor(e.textEditor);
     modalEditor?.onSelectionChange(e.selections, e.kind);
@@ -419,13 +483,16 @@ function initialize(context: vscode.ExtensionContext) {
 
 let subscriptions: vscode.Disposable[] = [];
 function enable() {
-    if (extension)
+    if (_extension)
         return;
 
-    extension = new Extension();
+    _extension = new Extension();
 
     subscriptions.push(
         vscode.commands.registerCommand("type", onType),
+        vscode.commands.registerCommand("replacePreviousChar", onReplacePreviousChar),
+        vscode.commands.registerCommand("compositionStart", onCompositionStart),
+        vscode.commands.registerCommand("compositionEnd", onCompositionEnd),
         vscode.workspace.onDidChangeConfiguration(doDidChangeConfiguration),
         vscode.window.onDidChangeActiveTextEditor(doDidChangeActiveTextEditor),
         vscode.window.onDidChangeVisibleTextEditors(doDidChangeVisibleTextEditors),
@@ -433,11 +500,11 @@ function enable() {
     );
 
     for (var e of vscode.window.visibleTextEditors) {
-        extension.onNewEditor(e);
+        _extension.onNewEditor(e);
     }
     doDidChangeActiveTextEditor(vscode.window.activeTextEditor);
 
-    extension.showStatusBar();
+    _extension.showStatusBar();
 
     vscode.commands.executeCommand("setContext", `${extensionName}.isEnable`, true);
 
@@ -447,8 +514,8 @@ function enable() {
 function disable() {
     vscode.commands.executeCommand("setContext", `${extensionName}.isEnable`, false);
 
-    extension?.destroy();
-    extension = null;
+    _extension?.destroy();
+    _extension = null;
 
     for (var d of subscriptions)
         d.dispose();
@@ -458,7 +525,7 @@ function disable() {
 }
 
 function reloadConfig() {
-    extension?.updateConfig().then(() => {
+    _extension?.updateConfig().then(() => {
         log("reload config");
     });
 }

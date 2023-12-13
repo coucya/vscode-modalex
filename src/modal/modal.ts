@@ -143,10 +143,10 @@ class KeymapModal extends BaseModal {
         if (actionOrKeymap instanceof Keymap) {
             this._currentKeymap = actionOrKeymap;
             if (typeof this._timeout === "number") {
-                this._timeoutHandle = setTimeout(() => {
+                this._timeoutHandle = setTimeout(async () => {
                     try {
                         this._timeoutHandle = null;
-                        this.onTimeout();
+                        await this.onTimeout();
                     } finally {
                         this.reset();
                     }
@@ -161,7 +161,7 @@ class KeymapModal extends BaseModal {
             }
         } else {
             try {
-                this.onDefault();
+                await this.onDefault();
             } finally {
                 this.reset();
             }
