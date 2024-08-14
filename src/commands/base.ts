@@ -6,14 +6,14 @@ import { ModalType, SearchDirection, SearchRange, VisualType } from "../modal/mo
 
 
 function _enterNormal() {
-    let editor = getExtension().getCurrentEditor();
+    let editor = getExtension().getActiveEditor();
     if (editor) {
         editor.clearSelection();
         editor.enterMode(ModalType.normal);
     }
 }
 function _enterInsert(options?: { right: boolean; }) {
-    let editor = getExtension().getCurrentEditor();
+    let editor = getExtension().getActiveEditor();
     if (editor) {
         let vsEditor = editor.getVSCodeTextEditor();
 
@@ -58,19 +58,19 @@ function _enterInsert(options?: { right: boolean; }) {
     }
 }
 function _enterVisual() {
-    let editor = getExtension().getCurrentEditor();
+    let editor = getExtension().getActiveEditor();
     if (editor) {
         editor.enterMode(ModalType.visual);
     }
 }
 function _enterVisualLine() {
-    let editor = getExtension().getCurrentEditor();
+    let editor = getExtension().getActiveEditor();
     if (editor) {
         editor.enterMode(ModalType.visual, { visualType: VisualType.line });
     }
 }
 function _enterVisualBlock() {
-    let editor = getExtension().getCurrentEditor();
+    let editor = getExtension().getActiveEditor();
     if (editor) {
         editor.enterMode(ModalType.visual, { visualType: VisualType.block });
     }
@@ -79,7 +79,7 @@ function _enterVisualBlock() {
 
 function _searchCharLineBefore() {
     let ext = getExtension();
-    let editor = ext.getCurrentEditor();
+    let editor = ext.getActiveEditor();
     if (editor) {
         editor.enterMode(ModalType.search, {
             searchRange: SearchRange.line,
@@ -90,7 +90,7 @@ function _searchCharLineBefore() {
 }
 function _searchCharLineAfter() {
     let ext = getExtension();
-    let editor = ext.getCurrentEditor();
+    let editor = ext.getActiveEditor();
     if (editor) {
         editor.enterMode(ModalType.search, {
             searchRange: SearchRange.line,
@@ -102,7 +102,7 @@ function _searchCharLineAfter() {
 
 function _searchBefore() {
     let ext = getExtension();
-    let editor = ext.getCurrentEditor();
+    let editor = ext.getActiveEditor();
     if (editor) {
         editor.enterMode(ModalType.search, {
             searchRange: SearchRange.document,
@@ -113,7 +113,7 @@ function _searchBefore() {
 }
 function _searchAfter() {
     let ext = getExtension();
-    let editor = ext.getCurrentEditor();
+    let editor = ext.getActiveEditor();
     if (editor) {
         editor.enterMode(ModalType.search, {
             searchRange: SearchRange.document,
@@ -125,7 +125,7 @@ function _searchAfter() {
 
 function _searchNext() {
     let ext = getExtension();
-    let editor = ext.getCurrentEditor();
+    let editor = ext.getActiveEditor();
     if (!editor)
         return;
 
@@ -142,7 +142,7 @@ function _searchNext() {
 }
 function _searchPrev() {
     let ext = getExtension();
-    let editor = ext.getCurrentEditor();
+    let editor = ext.getActiveEditor();
     if (!editor)
         return;
 

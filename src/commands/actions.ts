@@ -54,7 +54,7 @@ async function _paste(args?: { before?: boolean; enterNormal?: boolean; }) {
     }
 
     if (args?.enterNormal) {
-        getExtension().getCurrentEditor()?.enterMode(ModalType.normal);
+        getExtension().getActiveEditor()?.enterMode(ModalType.normal);
     }
 }
 
