@@ -355,10 +355,11 @@ function getExtension(): Extension {
 async function onType(args: { text: string; }) {
     try {
         let extension = getExtension();
+
+
         if (extension.compositionState.isInComposition) {
             extension.compositionState.compositionText += args.text;
-            if (extension.isInInsertMode())
-                vscode.commands.executeCommand("default:type", args);
+            vscode.commands.executeCommand("default:type", args);
         } else {
             await extension.emitKeys(args.text);
         }
@@ -377,16 +378,11 @@ async function onReplacePreviousChar(args: { text: string; replaceCharCnt: numbe
     let extension = getExtension();
     let cs = extension.compositionState;
 
-    cs.compositionText = cs.compositionText.slice(0, -args.replaceCharCnt) + args.text;
+    let oldCompositionText = cs.compositionText;
+    let newCompositionText = oldCompositionText.slice(0, -args.replaceCharCnt) + args.text;
+    cs.compositionText = newCompositionText;
 
-    if (extension.isInInsertMode()) {
-        await vscode.commands.executeCommand("default:replacePreviousChar", args);
-    } else {
-        await vscode.commands.executeCommand("default:replacePreviousChar", {
-            text: "",
-            replaceCharCnt: 0,
-        });
-    }
+    await vscode.commands.executeCommand("default:replacePreviousChar", args);
 }
 
 async function onCompositionStart() {
@@ -397,20 +393,19 @@ async function onCompositionStart() {
 
 async function onCompositionEnd() {
     let extension = getExtension();
-    let cs = extension.compositionState;
 
+    let cs = extension.compositionState;
     let compositionText = cs.compositionText;
+
     cs.isInComposition = false;
     cs.compositionText = "";
 
-    if (extension.isInInsertMode()) {
-        await vscode.commands.executeCommand('default:replacePreviousChar', {
-            text: '',
-            replaceCharCnt: compositionText.length,
-        });
-    }
-
     try {
+        await vscode.commands.executeCommand("replacePreviousChar", {
+            text: "",
+            replaceCharCnt: compositionText.length
+        });
+
         await extension.emitKeys(compositionText);
     } catch (e) {
         if (e instanceof Error) {
@@ -421,10 +416,9 @@ async function onCompositionEnd() {
             logError(`unknown error when processing key "${compositionText}"`);
         }
     }
-
 }
 
-function doDidChangeActiveTextEditor(e: vscode.TextEditor | undefined) {
+function handleDidChangeActiveTextEditor(e: vscode.TextEditor | undefined) {
     let extension = getExtension();
     if (e && extension) {
         if (!extension.exist(e)) {
@@ -436,7 +430,7 @@ function doDidChangeActiveTextEditor(e: vscode.TextEditor | undefined) {
     }
 }
 
-async function doDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor[]) {
+async function handleDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor[]) {
     let extension = getExtension();
 
     let missing: vscode.TextEditor[] = extension.getMissingEditor(editors);
@@ -448,7 +442,7 @@ async function doDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor
         await extension.onNewEditor(e);
 }
 
-function doDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
+function handleDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
     try {
         let extension = getExtension();
         extension.updateConfig();
@@ -464,7 +458,7 @@ function doDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
     }
 }
 
-function doDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent) {
+function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent) {
     if (e.textEditor.document.uri.scheme === "output")
         return;
 
@@ -493,16 +487,16 @@ function enable() {
         vscode.commands.registerCommand("replacePreviousChar", onReplacePreviousChar),
         vscode.commands.registerCommand("compositionStart", onCompositionStart),
         vscode.commands.registerCommand("compositionEnd", onCompositionEnd),
-        vscode.workspace.onDidChangeConfiguration(doDidChangeConfiguration),
-        vscode.window.onDidChangeActiveTextEditor(doDidChangeActiveTextEditor),
-        vscode.window.onDidChangeVisibleTextEditors(doDidChangeVisibleTextEditors),
-        vscode.window.onDidChangeTextEditorSelection(doDidChangeTextEditorSelection),
+        vscode.workspace.onDidChangeConfiguration(handleDidChangeConfiguration),
+        vscode.window.onDidChangeActiveTextEditor(handleDidChangeActiveTextEditor),
+        vscode.window.onDidChangeVisibleTextEditors(handleDidChangeVisibleTextEditors),
+        vscode.window.onDidChangeTextEditorSelection(handleDidChangeTextEditorSelection),
     );
 
     for (var e of vscode.window.visibleTextEditors) {
         _extension.onNewEditor(e);
     }
-    doDidChangeActiveTextEditor(vscode.window.activeTextEditor);
+    handleDidChangeActiveTextEditor(vscode.window.activeTextEditor);
 
     _extension.showStatusBar();
 
