@@ -92,7 +92,6 @@ async function loadCustomKeymaps(path: string) {
 
 function loadPresetKeymaps(preset: string) {
     try {
-
         if (preset === "none")
             return null;
 
@@ -526,6 +525,7 @@ function initialize(context: vscode.ExtensionContext) {
 }
 
 let subscriptions: vscode.Disposable[] = [];
+
 function enable() {
     if (_extension)
         return;

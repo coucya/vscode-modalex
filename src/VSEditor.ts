@@ -137,8 +137,8 @@ class VSModalEditor extends Editor {
     }
 
     destroy() {
-        this.removeAllListeners();
         this._vsTextEditor.options.cursorStyle = this._oldCursorStyle;
+        this.removeAllListeners();
     }
 
     override enterMode(modalType: string | ModalType, options?: any): void {
@@ -393,9 +393,10 @@ class VSModalEditor extends Editor {
         return this._nextMatch(text, range, true);
     }
 }
-
+export type {
+    CursorStyles
+};
 export {
     VSModalEditor,
     CursorMoveDir,
-    CursorStyles
 };

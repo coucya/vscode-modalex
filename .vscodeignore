@@ -8,5 +8,8 @@ dist/*.map
 .gitignore
 pnpm-lock.yaml
 tsconfig.json
+vite.config.js
+vite.config.ts
 webpack.config.js
+webpack.config.cjs
 todo.txt
