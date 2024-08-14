@@ -10,7 +10,7 @@ import { ExtConfig } from "./config";
 
 import * as presetSimple from "./presets/simple";
 
-import { VSModalEditor } from "./VSEditor";
+import { CursorStyles, VSModalEditor } from "./VSEditor";
 
 
 const presets = {
@@ -32,16 +32,6 @@ async function notify(msg: string) {
 }
 async function notifyError(msg: string) {
     await vscode.window.showErrorMessage(msg);
-}
-
-function timeoutErrorHandle(e: any) {
-    if (e instanceof Error) {
-        logError(e.message);
-        notifyError(e.message);
-    } else {
-        logError(`unknown error in timeoutAction`);
-        notifyError("unknown error in timeoutAction");
-    }
 }
 
 async function readFileAsString(path: string): Promise<string | undefined> {
@@ -97,7 +87,7 @@ async function loadCustomKeymaps(path: string) {
     return { normal, insert, visual };
 }
 
-function asPresetKeymaps(preset: string): {
+function loadPresetKeymaps(preset: string): {
     normal: Keymap,
     insert: Keymap,
     visual: Keymap,
@@ -144,8 +134,34 @@ async function vsconfigAsExtConfig(config: vscode.WorkspaceConfiguration): Promi
     let insertKeymap = parseKeymapObj(insertKeymapObj);
     let visualKeymap = parseKeymapObj(visualKeymapObj);
 
-    let presetKeymaps = asPresetKeymaps(preset);
+    let presetKeymaps = loadPresetKeymaps(preset);
     let customKeymaps = customKeymapsPath ? await loadCustomKeymaps(customKeymapsPath) : null;
+
+    let cursorStyles: CursorStyles = {
+        [ModalType.normal]: toVSCodeCursorStyle(normalCursorStyle),
+        [ModalType.insert]: toVSCodeCursorStyle(insertCursorStyle),
+        [ModalType.visual]: toVSCodeCursorStyle(visualCursorStyle),
+        [ModalType.search]: toVSCodeCursorStyle(searchCursorStyle),
+    };
+
+    let normalMargedKeymap: Keymap = new Keymap();
+    let insertMargedKeymap: Keymap = new Keymap();
+    let visualMargedKeymap: Keymap = new Keymap();
+    if (presetKeymaps?.normal)
+        normalMargedKeymap.marge(presetKeymaps.normal);
+    if (customKeymaps?.normal)
+        normalMargedKeymap.marge(customKeymaps.normal);
+    normalMargedKeymap.marge(normalKeymap);
+    if (presetKeymaps?.insert)
+        insertMargedKeymap.marge(presetKeymaps.insert);
+    if (customKeymaps?.insert)
+        insertMargedKeymap.marge(customKeymaps.insert);
+    insertMargedKeymap.marge(insertKeymap);
+    if (presetKeymaps?.visual)
+        visualMargedKeymap.marge(presetKeymaps.visual);
+    if (customKeymaps?.visual)
+        visualMargedKeymap.marge(customKeymaps.visual);
+    visualMargedKeymap.marge(visualKeymap);
 
     insertTimeout = insertTimeout && insertTimeout >= 0 ? insertTimeout : null;
 
@@ -158,11 +174,17 @@ async function vsconfigAsExtConfig(config: vscode.WorkspaceConfiguration): Promi
             insert: insertKeymap,
             visual: visualKeymap,
         },
+        margedKeymaps: {
+            normal: normalMargedKeymap,
+            insert: insertMargedKeymap,
+            visual: visualMargedKeymap,
+        },
         insertTimeout,
         normalCursorStyle: toVSCodeCursorStyle(normalCursorStyle),
         insertCursorStyle: toVSCodeCursorStyle(insertCursorStyle),
         visualCursorStyle: toVSCodeCursorStyle(visualCursorStyle),
         searchCursorStyle: toVSCodeCursorStyle(searchCursorStyle),
+        cursorStyles,
     };
 
     return setting;
@@ -271,45 +293,51 @@ class Extension extends EventEmitter {
         this._statusBar.hide();
     }
 
+    _createEditorWithConfig(editor: vscode.TextEditor) {
+        let config = this._config;
+        if (!config)
+            throw new Error("config is not loaded yet");
+
+        let modalEditor = new VSModalEditor(
+            editor,
+            config.cursorStyles,
+            config.insertTimeout ?? undefined,
+        );
+        modalEditor.updateKeymaps(config.margedKeymaps);
+        return modalEditor;
+    }
+
+    _updateEditorWithConfig(editor: VSModalEditor) {
+        let config = this._config;
+        if (!config)
+            // config = await this._updateConfig();
+            throw new Error("config is not loaded yet");
+
+        editor.getInsertModal().setTimeout(config.insertTimeout);
+        editor.setCursorStyle(config.cursorStyles);
+        editor.clearKeymapsAll();
+        editor.updateKeymaps(config.margedKeymaps);
+    }
+
     async _updateConfig(): Promise<ExtConfig> {
         let vsConfig = vscode.workspace.getConfiguration(extensionName);
         this._config = await vsconfigAsExtConfig(vsConfig);
         return this._config;
     }
 
-    async _updateEditorConfig(editor: VSModalEditor) {
-        let config = this._config;
-        if (!config)
-            config = await this._updateConfig();
-
-        let styles = {
-            [ModalType.normal]: config.normalCursorStyle,
-            [ModalType.insert]: config.insertCursorStyle,
-            [ModalType.visual]: config.visualCursorStyle,
-            [ModalType.search]: config.searchCursorStyle,
-        };
-
-        editor.getInsertModal().setTimeout(config.insertTimeout);
-        editor.setCursorStyle(styles);
-        editor.clearKeymapsAll();
-        if (config.preset)
-            editor.updateKeymaps(config.preset);
-        if (config.customKeymaps)
-            editor.updateKeymaps(config.customKeymaps);
-        editor.updateKeymaps(config.keymaps);
-    }
-
     async updateConfig() {
         await this._updateConfig();
         for (var editor of this._editors.values())
-            this._updateEditorConfig(editor);
+            this._updateEditorWithConfig(editor);
+    }
+
+    hasAttachEditor(editor: vscode.TextEditor): boolean {
+        return this._editors.has(editor);
     }
 
     attachEditor(editor: vscode.TextEditor): VSModalEditor {
-        let modalEditor = new VSModalEditor(editor);
+        let modalEditor = this._createEditorWithConfig(editor);
         this._editors.set(editor, modalEditor);
-
-        this._updateEditorConfig(modalEditor);
 
         modalEditor.enterMode("normal");
         modalEditor.addListener("enterMode", (mode: string) => this.updateStatusBarText());
@@ -323,13 +351,6 @@ class Extension extends EventEmitter {
             me.destroy();
             this._editors.delete(editor);
         }
-    }
-
-    activeEditor(editor: vscode.TextEditor) {
-        let modalEditor: VSModalEditor | undefined = this._editors.get(editor);
-        if (!modalEditor)
-            modalEditor = this.attachEditor(editor);
-        this.setActiveEditor(modalEditor);
     }
 
     updateVisibleEditors(editors: readonly vscode.TextEditor[]) {
@@ -433,7 +454,10 @@ async function onCompositionEnd() {
 function handleDidChangeActiveTextEditor(e: vscode.TextEditor | undefined) {
     let extension = getExtension();
     if (e) {
-        extension.activeEditor(e);
+        let editor = extension.getByVSCodeTextEditor(e);
+        if (!editor)
+            editor = extension.attachEditor(e);
+        extension.setActiveEditor(editor);
     } else if (!e && vscode.window.visibleTextEditors.length === 0) {
         extension.clearActiveEditor();
     }
@@ -483,27 +507,35 @@ function enable() {
         return;
 
     _extension = new Extension();
+    _extension.updateConfig().then(() => {
+        if (!_extension)
+            return;
 
-    subscriptions.push(
-        vscode.commands.registerCommand("type", onType),
-        vscode.commands.registerCommand("replacePreviousChar", onReplacePreviousChar),
-        vscode.commands.registerCommand("compositionStart", onCompositionStart),
-        vscode.commands.registerCommand("compositionEnd", onCompositionEnd),
-        vscode.workspace.onDidChangeConfiguration(handleDidChangeConfiguration),
-        vscode.window.onDidChangeActiveTextEditor(handleDidChangeActiveTextEditor),
-        vscode.window.onDidChangeVisibleTextEditors(handleDidChangeVisibleTextEditors),
-        vscode.window.onDidChangeTextEditorSelection(handleDidChangeTextEditorSelection),
-    );
+        subscriptions.push(
+            vscode.commands.registerCommand("type", onType),
+            vscode.commands.registerCommand("replacePreviousChar", onReplacePreviousChar),
+            vscode.commands.registerCommand("compositionStart", onCompositionStart),
+            vscode.commands.registerCommand("compositionEnd", onCompositionEnd),
+            vscode.workspace.onDidChangeConfiguration(handleDidChangeConfiguration),
+            vscode.window.onDidChangeActiveTextEditor(handleDidChangeActiveTextEditor),
+            vscode.window.onDidChangeVisibleTextEditors(handleDidChangeVisibleTextEditors),
+            vscode.window.onDidChangeTextEditorSelection(handleDidChangeTextEditorSelection),
+        );
 
-    for (var e of vscode.window.visibleTextEditors)
-        _extension.attachEditor(e);
-    handleDidChangeActiveTextEditor(vscode.window.activeTextEditor);
+        for (var e of vscode.window.visibleTextEditors)
+            _extension.attachEditor(e);
 
-    _extension.showStatusBar();
+        if (vscode.window.activeTextEditor) {
+            let editor = _extension.getByVSCodeTextEditor(vscode.window.activeTextEditor);
+            _extension.setActiveEditor(editor!);
+        }
 
-    vscode.commands.executeCommand("setContext", `${extensionName}.isEnable`, true);
+        _extension.showStatusBar();
 
-    log("ModalEx enable");
+        vscode.commands.executeCommand("setContext", `${extensionName}.isEnable`, true);
+
+        log("ModalEx enable");
+    });
 }
 
 function disable() {

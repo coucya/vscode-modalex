@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { Keymap } from "./modal/keymap";
+import { CursorStyles } from "./VSEditor";
 
 export const extensionName = "modalex";
 export const extensionDisplayName = "ModalEx";
@@ -16,9 +17,11 @@ export type ExtConfig = {
     customKeymaps: Keymaps | null,
     customKeymapsPath: string | null,
     keymaps: Keymaps,
+    margedKeymaps: Keymaps,
     insertTimeout: number | null,
     normalCursorStyle: vscode.TextEditorCursorStyle;
     insertCursorStyle: vscode.TextEditorCursorStyle;
     visualCursorStyle: vscode.TextEditorCursorStyle;
     searchCursorStyle: vscode.TextEditorCursorStyle;
+    cursorStyles: CursorStyles,
 };

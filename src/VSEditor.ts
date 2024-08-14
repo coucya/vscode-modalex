@@ -89,7 +89,11 @@ class VSModalEditor extends Editor {
     _visaulAnchor: vscode.Position;
     _visaulActionOffset: number;
 
-    constructor(vsEditor: vscode.TextEditor) {
+    constructor(
+        vsEditor: vscode.TextEditor,
+        styles?: CursorStyles,
+        insertTimeout?: number,
+    ) {
         super();
 
         this._lastSelection = vsEditor.selection;
@@ -112,6 +116,7 @@ class VSModalEditor extends Editor {
             onExecCommand: execCommandCb,
         });
         let insertModal = new KeymapModal("insert", this, {
+            timeout: insertTimeout,
             onDefault: insertTextCb,
             onTimeout: insertTextCb,
             onExecCommand: execCommandCb,
@@ -123,7 +128,7 @@ class VSModalEditor extends Editor {
 
         this._vsTextEditor = vsEditor;
         this._oldCursorStyle = vsEditor.options.cursorStyle;
-        this._styles = {
+        this._styles = styles ?? {
             [ModalType.normal]: vscode.TextEditorCursorStyle.Block,
             [ModalType.insert]: vscode.TextEditorCursorStyle.Line,
             [ModalType.visual]: vscode.TextEditorCursorStyle.LineThin,
