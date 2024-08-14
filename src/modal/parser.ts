@@ -21,8 +21,8 @@ type Command = string | Parameterized;
 type KeymapTarget = { target: string; };
 
 type KeymapConfigObject = {
-    // TODO: id and target.
-    // id: string, 
+    id: string,
+    help: string,
     [key: string]: Command | Command[] | KeymapConfigObject,
 };
 
@@ -35,7 +35,9 @@ function isCommand(obj: any): obj is Command {
 function isCommandList(obj: any): obj is Command[] {
     return obj && obj instanceof Array && obj.every(isCommand);
 }
-
+function isKeymapTarget(obj: any): obj is KeymapTarget {
+    return obj && typeof obj === "object" && typeof obj.target === "string";
+}
 function commandToAction(command: Command): Action {
     if (isString(command))
         return new CommandAction(command);
@@ -43,15 +45,27 @@ function commandToAction(command: Command): Action {
         return new CommandAction(command.command, command.args);
 }
 
-function parseKeymapConfigObject(obj: object): Keymap {
+type PaddingResolution = { keymap: Keymap, key: string, target: string; };
+
+
+function _parseKeymapConfigObject(idKeymaps: Map<string, Keymap>, pending: PaddingResolution[], obj: any): Keymap {
     if (typeof obj !== "object" || !obj)
         throw new ParseKeymapError(`invalid keymaps: ${JSON.stringify(obj)}`);
 
-    let help = (obj as any).help;
-    if (typeof help !== "string" && help !== undefined)
+    let id: string | undefined = obj.id;
+    let help: string | undefined = obj.help;
+    if (id !== undefined && (typeof id !== "string" || id.length === 0))
+        throw new ParseKeymapError(`invalid id: ${JSON.stringify(id)}`);
+    if (help !== undefined && typeof help !== "string")
         throw new ParseKeymapError(`invalid help: ${JSON.stringify(help)}`);
 
-    let keymap: Keymap = new Keymap(help);
+    let keymap: Keymap = new Keymap({ id, help });
+
+    if (id) {
+        if (idKeymaps.has(id))
+            throw new ParseKeymapError(`duplicate id: ${id}`);
+        idKeymaps.set(id, keymap);
+    }
 
     for (var [k, v] of Object.entries(obj)) {
         if (k === "id" || k === "help")
@@ -60,17 +74,38 @@ function parseKeymapConfigObject(obj: object): Keymap {
             continue;
 
         if (isCommand(v)) {
-            // check v not is empty string
-            if (v) {
+            if (v) { // check v not is empty string
                 let action: Action = commandToAction(v);
                 keymap.setKey(k, action);
             }
         } else if (isCommandList(v)) {
             let action = new SeqAction(v.map(commandToAction));
             keymap.setKey(k, action);
+        } else if (isKeymapTarget(v)) {
+            pending.push({
+                keymap: keymap,
+                key: k,
+                target: v.target,
+            });
         } else {
-            let subKeymap = parseKeymapConfigObject(v);
+            let subKeymap = _parseKeymapConfigObject(idKeymaps, pending, v);
             keymap.setKey(k, subKeymap);
+        }
+    }
+
+    return keymap;
+}
+
+function parseKeymapConfigObject(obj: object): Keymap {
+    let idKeymaps = new Map<string, Keymap>();
+    let pending: PaddingResolution[] = [];
+
+    let keymap = _parseKeymapConfigObject(idKeymaps, pending, obj);
+
+    for (let item of pending) {
+        let subKeymap = idKeymaps.get(item.target);
+        if (subKeymap) {
+            item.keymap.setKey(item.key, subKeymap);
         }
     }
 

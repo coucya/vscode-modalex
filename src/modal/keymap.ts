@@ -1,12 +1,22 @@
 import { Action } from "./action";
 
 class Keymap {
-    _help: string;
+    _id: string | null;
+    _help: string | null;
     _maps: Map<string, Keymap | Action>;
 
-    constructor(help?: string) {
-        this._help = help ?? "";
+    constructor(options?: { id?: string, help?: string; }) {
+        this._id = options?.id ?? null;
+        this._help = options?.help ?? null;
         this._maps = new Map();
+    }
+
+    getId(): string | undefined {
+        return this._id ?? undefined;
+    }
+
+    getHelp(): string {
+        return this._help ?? "";
     }
 
     setKey(key: string, keymap_or_action: Keymap | Action) {
