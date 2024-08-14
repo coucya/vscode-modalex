@@ -31,7 +31,8 @@ class FunctionAction extends Action {
 
 class SeqAction extends Action {
     _seq: Action[];
-    constructor(...actions: Action[]) {
+
+    constructor(actions: Action[]) {
         super();
         this._seq = [...actions];
     }

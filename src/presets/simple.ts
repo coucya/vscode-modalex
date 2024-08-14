@@ -42,8 +42,8 @@ let normal = {
         e: "deleteWordRight",
         w: "deleteWordRight"
     },
-    "y": {
-        "y": [
+    y: {
+        y: [
             {
                 "command": "cursorMove",
                 "args": {
@@ -93,7 +93,11 @@ let visual = {
         "modalex.action.paste",
         "modalex.enterNormal"
     ],
-    "d,x": [
+    d: [
+        "editor.action.clipboardCutAction",
+        "modalex.enterNormal"
+    ],
+    x: [
         "editor.action.clipboardCutAction",
         "modalex.enterNormal"
     ],

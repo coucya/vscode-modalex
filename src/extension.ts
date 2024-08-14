@@ -3,7 +3,7 @@ import { EventEmitter } from "events";
 
 import { ModalType } from './modal/modal';
 import { Keymap } from './modal/keymap';
-import { ParseKeymapConfigObj as parseKeymapObj } from './modal/parser';
+import { parseKeymapConfigObject } from './modal/parser';
 
 import { extensionName, extensionDisplayName } from "./config";
 import { ExtConfig } from "./config";
@@ -80,9 +80,9 @@ async function loadCustomKeymaps(path: string) {
     if (typeof visualKeymapObj !== "object")
         visualKeymapObj = {};
 
-    let normal = parseKeymapObj(normalKeymapObj);
-    let insert = parseKeymapObj(insertKeymapObj);
-    let visual = parseKeymapObj(visualKeymapObj);
+    let normal = parseKeymapConfigObject(normalKeymapObj);
+    let insert = parseKeymapConfigObject(insertKeymapObj);
+    let visual = parseKeymapConfigObject(visualKeymapObj);
 
     return { normal, insert, visual };
 }
@@ -109,9 +109,9 @@ function loadPresetKeymaps(preset: string): {
     if (typeof visualKeymapObj !== "object")
         visualKeymapObj = {};
 
-    let normal = parseKeymapObj(normalKeymapObj);
-    let insert = parseKeymapObj(insertKeymapObj);
-    let visual = parseKeymapObj(visualKeymapObj);
+    let normal = parseKeymapConfigObject(normalKeymapObj);
+    let insert = parseKeymapConfigObject(insertKeymapObj);
+    let visual = parseKeymapConfigObject(visualKeymapObj);
 
     return { normal, insert, visual };
 }
@@ -130,9 +130,9 @@ async function vsconfigAsExtConfig(config: vscode.WorkspaceConfiguration): Promi
     let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
     let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
     let searchCursorStyle = config.get<string>("searchCursorStyle") ?? "underline";
-    let normalKeymap = parseKeymapObj(normalKeymapObj);
-    let insertKeymap = parseKeymapObj(insertKeymapObj);
-    let visualKeymap = parseKeymapObj(visualKeymapObj);
+    let normalKeymap = parseKeymapConfigObject(normalKeymapObj);
+    let insertKeymap = parseKeymapConfigObject(insertKeymapObj);
+    let visualKeymap = parseKeymapConfigObject(visualKeymapObj);
 
     let presetKeymaps = loadPresetKeymaps(preset);
     let customKeymaps = customKeymapsPath ? await loadCustomKeymaps(customKeymapsPath) : null;
@@ -535,6 +535,9 @@ function enable() {
         vscode.commands.executeCommand("setContext", `${extensionName}.isEnable`, true);
 
         log("ModalEx enable");
+    }).catch((e) => { 
+        logError(`Error when enable extension: ${e.message}`);
+        notifyError(`Error when enable extension: ${e.message}`);
     });
 }
 

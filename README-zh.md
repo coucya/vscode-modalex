@@ -55,7 +55,18 @@ ModalEx支持自定义键绑定，你可以在vscode的设置中找到keymaps选
     }
 }
 ```
-``` jsonc
+``` typescript
+
+type Command = string | { command: string, args: any };
+type CommandList = Command[];
+type KeymapTarget = { target: string };
+
+type Keymap = {
+    id?: string,
+    help?: string,
+    [key: string]: Command | CommandList | Keymap | KeymapTarget,
+}
+
 "normal": {
     // 一些设置仅在 normal 模式下生效。
     "a": "<command>",           // 按下 a 键，执行 <command> 命令。
@@ -88,9 +99,11 @@ ModalEx 提供了一些控制命令和一些编辑命令。
 
 #### 控制命令（可以在 vscode 命令面板中使用）:
 源代码见 /src/commands/base.ts   
- * **modalex.enable**: 开启扩展。
- * **modalex.disable**: 关闭扩展。
+ * **modalex.enable**: 开启模态编辑功能。
+ * **modalex.disable**: 关闭模态编辑功能。
  * **modalex.reload**: 重新加载扩展，如果 customKeymaps 文件的内容发生改变，可以使用该命令重新加载。vscode 的设置发生改变时会自动重新加载，无需使用该命令。
+ * **modalex.reload**: 重新加载扩展，如果 customKeymaps 文件的内容发生改变，可以使用该命令重新加载。vscode 的设置发生改变时会自动重新加载，无需使用该命令。
+ * **modalex.editCustomKeymaps**: 打开自定义键映射文件以进行修改。
 
 #### 控制命令（不能在 vscode 命令面板中使用）:
 源代码见 /src/commands/base.ts   
@@ -120,10 +133,10 @@ search 模式会根据进入该模式时的参数执行不同的策略，有如�
      * **line**: 只在光标所在的行内搜索。
      * **document**: 在整个文档内搜索。
  * **searchDirection**: 搜索方向。
-     * **before**: 从光标所在的位置往文件开头或行的开头处搜索。
-     * **after**: 从光标所在的位置往文件结尾或行的结尾处搜索。
-     * **start**：从行或文档的开头往行或文档的结尾处搜索。
-     * **reverse**：从行或文档的结尾往行或文档的开头处搜索。
+     * **before**: 从光标所在的位置往文件开头往行的开头处搜索。
+     * **after**: 从光标所在的位置往文件结尾往行的结尾处搜索。
+     * **start**：从行或文档的开头往行往文档的结尾处搜索。
+     * **reverse**：从行或文档的结尾往行往文档的开头处搜索。
  * **singleChar**: 如果为 true，仅搜索单个字符，而不需要按回车键。
 
 ## 关于 visual 模态
