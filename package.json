@@ -258,6 +258,10 @@
             {
                 "command": "modalex.reload",
                 "title": "ModalEx reload config"
+            },
+            {
+                "command": "modalex.editCustomKeymaps",
+                "title": "ModalEx edit custom keymaps"
             }
         ],
         "keybindings": [

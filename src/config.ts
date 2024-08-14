@@ -14,6 +14,7 @@ export type Keymaps = {
 export type ExtConfig = {
     preset: Keymaps | null,
     customKeymaps: Keymaps | null,
+    customKeymapsPath: string | null,
     keymaps: Keymaps,
     insertTimeout: number | null,
     normalCursorStyle: vscode.TextEditorCursorStyle;

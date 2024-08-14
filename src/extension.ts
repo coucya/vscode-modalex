@@ -149,9 +149,10 @@ async function asExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtCo
 
     insertTimeout = insertTimeout && insertTimeout >= 0 ? insertTimeout : null;
 
-    let setting = {
+    let setting: ExtConfig = {
         preset: presetKeymaps,
         customKeymaps,
+        customKeymapsPath: customKeymapsPath ?? null,
         keymaps: {
             normal: normalKeymap,
             insert: insertKeymap,
@@ -200,6 +201,12 @@ class Extension extends EventEmitter {
         for (var e of this._editors.values())
             e.destroy();
         this._editors.clear();
+    }
+
+    getConfig(): ExtConfig {
+        if (!this._config)
+            throw new Error("config is not loaded yet");
+        return this._config;
     }
 
     async emitKeys(keys: string) {

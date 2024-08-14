@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import { extensionName } from "../config";
-import { getExtension, enable, disable, reloadConfig } from "../extension";
+import { getExtension, enable, disable, reloadConfig, logError, notifyError, notify } from "../extension";
 import { ModalType, SearchDirection, SearchRange, VisualType } from "../modal/modal";
 
 
@@ -12,13 +12,13 @@ function _enterNormal() {
         editor.enterMode(ModalType.normal);
     }
 }
-function _enterInsert(option?: { right: boolean; }) {
+function _enterInsert(options?: { right: boolean; }) {
     let editor = getExtension().getCurrentEditor();
     if (editor) {
         let vsEditor = editor.getVSCodeTextEditor();
 
         let newSelections = [];
-        if (editor.isNormal() && option?.right) {
+        if (editor.isNormal() && options?.right) {
             for (var selection of vsEditor.selections) {
                 let pos = selection.active;
                 if (!editor.isAtLineEnd(selection))
@@ -26,7 +26,7 @@ function _enterInsert(option?: { right: boolean; }) {
                 let newSelection = new vscode.Selection(pos, pos);
                 newSelections.push(newSelection);
             }
-        } else if (editor.isVisual(VisualType.line) && option?.right) {
+        } else if (editor.isVisual(VisualType.line) && options?.right) {
             let sl = vsEditor.selection.start.line;
             let el = vsEditor.selection.end.line;
             for (var i = sl; i <= el; i++) {
@@ -41,7 +41,7 @@ function _enterInsert(option?: { right: boolean; }) {
                 let newSelection = new vscode.Selection(new vscode.Position(i, 0), new vscode.Position(i, 0));
                 newSelections.push(newSelection);
             }
-        } else if (option?.right) {
+        } else if (options?.right) {
             for (var selection of vsEditor.selections) {
                 let newSelection = new vscode.Selection(selection.end, selection.end);
                 newSelections.push(newSelection);
@@ -158,6 +158,26 @@ function _searchPrev() {
     vsEditor.revealRange(vsEditor.selection);
 }
 
+function openLocalFile(filePath: string) {
+    vscode.workspace.openTextDocument(filePath).then(doc => {
+        vscode.window.showTextDocument(doc);
+    }, err => {
+        let msg = `Open ${filePath} error, ${err}.`;
+        logError(msg);
+        notifyError(msg);
+    });
+}
+
+function _editCustomKeymaps() {
+    let ext = getExtension();
+    let path = ext.getConfig().customKeymapsPath;
+    if (path) {
+        openLocalFile(path);
+    } else {
+        notify(`Please set customKeymapsPath in ${extensionName} config file.`);
+    }
+}
+
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(`${extensionName}.enable`, enable),
@@ -174,6 +194,7 @@ function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(`${extensionName}.searchAfter`, _searchAfter),
         vscode.commands.registerCommand(`${extensionName}.searchNext`, _searchNext),
         vscode.commands.registerCommand(`${extensionName}.searchPrev`, _searchPrev),
+        vscode.commands.registerCommand(`${extensionName}.editCustomKeymaps`, _editCustomKeymaps),
     );
 }
 
