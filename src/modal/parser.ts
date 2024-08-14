@@ -113,5 +113,6 @@ function parseKeymapConfigObject(obj: object): Keymap {
 }
 
 export {
+    ParseKeymapError,
     parseKeymapConfigObject
 };

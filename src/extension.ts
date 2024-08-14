@@ -3,7 +3,7 @@ import { EventEmitter } from "events";
 
 import { ModalType } from './modal/modal';
 import { Keymap } from './modal/keymap';
-import { parseKeymapConfigObject } from './modal/parser';
+import { parseKeymapConfigObject, ParseKeymapError } from './modal/parser';
 
 import { extensionName, extensionDisplayName } from "./config";
 import { ExtConfig } from "./config";
@@ -11,6 +11,7 @@ import { ExtConfig } from "./config";
 import * as presetSimple from "./presets/simple";
 
 import { CursorStyles, VSModalEditor } from "./VSEditor";
+import { ExtensionError } from './error';
 
 
 const presets = {
@@ -35,17 +36,9 @@ async function notifyError(msg: string) {
 }
 
 async function readFileAsString(path: string): Promise<string | undefined> {
-    try {
-        let uri = vscode.Uri.file(path);
-        let data = await vscode.workspace.fs.readFile(uri);
-        return new TextDecoder().decode(data);
-    } catch (e) {
-        if (e instanceof vscode.FileSystemError) {
-            return undefined;
-        } else {
-            throw e;
-        }
-    }
+    let uri = vscode.Uri.file(path);
+    let data = await vscode.workspace.fs.readFile(uri);
+    return new TextDecoder().decode(data);
 }
 
 function toVSCodeCursorStyle(style: string): vscode.TextEditorCursorStyle {
@@ -62,132 +55,155 @@ function toVSCodeCursorStyle(style: string): vscode.TextEditorCursorStyle {
 }
 
 async function loadCustomKeymaps(path: string) {
-    let keymapsString = await readFileAsString(path);
-    if (!keymapsString)
-        return null;
-    let p = JSON.parse(keymapsString);
+    try {
+        let keymapsString = await readFileAsString(path);
+        if (!keymapsString)
+            return null;
+        let p = JSON.parse(keymapsString);
 
-    if (!p)
-        return null;
+        if (!p)
+            return null;
 
-    let normalKeymapObj = p.normal;
-    let insertKeymapObj = p.insert;
-    let visualKeymapObj = p.visual;
-    if (typeof normalKeymapObj !== "object")
-        normalKeymapObj = {};
-    if (typeof insertKeymapObj !== "object")
-        insertKeymapObj = {};
-    if (typeof visualKeymapObj !== "object")
-        visualKeymapObj = {};
+        let normalKeymapObj = p.normal;
+        let insertKeymapObj = p.insert;
+        let visualKeymapObj = p.visual;
+        if (!normalKeymapObj || typeof normalKeymapObj !== "object")
+            normalKeymapObj = {};
+        if (!insertKeymapObj || typeof insertKeymapObj !== "object")
+            insertKeymapObj = {};
+        if (!visualKeymapObj || typeof visualKeymapObj !== "object")
+            visualKeymapObj = {};
 
-    let normal = parseKeymapConfigObject(normalKeymapObj);
-    let insert = parseKeymapConfigObject(insertKeymapObj);
-    let visual = parseKeymapConfigObject(visualKeymapObj);
+        let normal = parseKeymapConfigObject(normalKeymapObj);
+        let insert = parseKeymapConfigObject(insertKeymapObj);
+        let visual = parseKeymapConfigObject(visualKeymapObj);
 
-    return { normal, insert, visual };
+        return { normal, insert, visual };
+    } catch (e) {
+        if (e instanceof ParseKeymapError) {
+            throw new ExtensionError(`error loading custom keymap, ${e.message}`, e);
+        } else if (e instanceof vscode.FileSystemError) {
+            throw new ExtensionError(`error loading custom keymap, ${e.message}`, e);
+        } else {
+            throw new ExtensionError(`error loading custom keymap`, e);
+        }
+    }
 }
 
-function loadPresetKeymaps(preset: string): {
-    normal: Keymap,
-    insert: Keymap,
-    visual: Keymap,
-} | null {
-    if (preset === "none")
-        return null;
+function loadPresetKeymaps(preset: string) {
+    try {
 
-    let p = (presets as any)[preset];
-    if (!p)
-        return null;
+        if (preset === "none")
+            return null;
 
-    let normalKeymapObj = p.normal;
-    let insertKeymapObj = p.insert;
-    let visualKeymapObj = p.visual;
-    if (typeof normalKeymapObj !== "object")
-        normalKeymapObj = {};
-    if (typeof insertKeymapObj !== "object")
-        insertKeymapObj = {};
-    if (typeof visualKeymapObj !== "object")
-        visualKeymapObj = {};
+        let p = (presets as any)[preset];
+        if (!p)
+            return null;
 
-    let normal = parseKeymapConfigObject(normalKeymapObj);
-    let insert = parseKeymapConfigObject(insertKeymapObj);
-    let visual = parseKeymapConfigObject(visualKeymapObj);
+        let normalKeymapObj = p.normal;
+        let insertKeymapObj = p.insert;
+        let visualKeymapObj = p.visual;
+        if (!normalKeymapObj || typeof normalKeymapObj !== "object")
+            normalKeymapObj = {};
+        if (!insertKeymapObj || typeof insertKeymapObj !== "object")
+            insertKeymapObj = {};
+        if (!visualKeymapObj || typeof visualKeymapObj !== "object")
+            visualKeymapObj = {};
 
-    return { normal, insert, visual };
+        let normal = parseKeymapConfigObject(normalKeymapObj);
+        let insert = parseKeymapConfigObject(insertKeymapObj);
+        let visual = parseKeymapConfigObject(visualKeymapObj);
+
+        return { normal, insert, visual };
+    } catch (e) {
+        if (e instanceof ParseKeymapError) {
+            throw new ExtensionError(`error loading custom keymap, ${e.message}`, e);
+        } else {
+            throw new ExtensionError(`error loading custom keymap`, e);
+        }
+    }
 }
 
 async function vsconfigAsExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtConfig> {
-    let preset = config.get<string>("preset") ?? "none";
-    let insertTimeout = config.get<number>("insertTimeout") ?? null;
+    try {
+        let preset = config.get<string>("preset") ?? "none";
+        let insertTimeout = config.get<number>("insertTimeout") ?? null;
 
-    let customKeymapsPath = config.get<string | null>("customKeymaps");
+        let customKeymapsPath = config.get<string | null>("customKeymaps");
 
-    let keymaps: any = config.get<object>("keymaps") ?? {};
-    let normalKeymapObj = keymaps?.normal ?? {};
-    let insertKeymapObj = keymaps?.insert ?? {};
-    let visualKeymapObj = keymaps?.visual ?? {};
-    let normalCursorStyle = config.get<string>("normalCursorStyle") ?? "block";
-    let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
-    let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
-    let searchCursorStyle = config.get<string>("searchCursorStyle") ?? "underline";
-    let normalKeymap = parseKeymapConfigObject(normalKeymapObj);
-    let insertKeymap = parseKeymapConfigObject(insertKeymapObj);
-    let visualKeymap = parseKeymapConfigObject(visualKeymapObj);
+        let keymaps: any = config.get<object>("keymaps") ?? {};
+        let normalKeymapObj = keymaps?.normal ?? {};
+        let insertKeymapObj = keymaps?.insert ?? {};
+        let visualKeymapObj = keymaps?.visual ?? {};
+        let normalCursorStyle = config.get<string>("normalCursorStyle") ?? "block";
+        let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
+        let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
+        let searchCursorStyle = config.get<string>("searchCursorStyle") ?? "underline";
+        let normalKeymap = parseKeymapConfigObject(normalKeymapObj);
+        let insertKeymap = parseKeymapConfigObject(insertKeymapObj);
+        let visualKeymap = parseKeymapConfigObject(visualKeymapObj);
 
-    let presetKeymaps = loadPresetKeymaps(preset);
-    let customKeymaps = customKeymapsPath ? await loadCustomKeymaps(customKeymapsPath) : null;
+        let presetKeymaps = loadPresetKeymaps(preset);
+        let customKeymaps = customKeymapsPath ? await loadCustomKeymaps(customKeymapsPath) : null;
 
-    let cursorStyles: CursorStyles = {
-        [ModalType.normal]: toVSCodeCursorStyle(normalCursorStyle),
-        [ModalType.insert]: toVSCodeCursorStyle(insertCursorStyle),
-        [ModalType.visual]: toVSCodeCursorStyle(visualCursorStyle),
-        [ModalType.search]: toVSCodeCursorStyle(searchCursorStyle),
-    };
+        let cursorStyles: CursorStyles = {
+            [ModalType.normal]: toVSCodeCursorStyle(normalCursorStyle),
+            [ModalType.insert]: toVSCodeCursorStyle(insertCursorStyle),
+            [ModalType.visual]: toVSCodeCursorStyle(visualCursorStyle),
+            [ModalType.search]: toVSCodeCursorStyle(searchCursorStyle),
+        };
 
-    let normalMargedKeymap: Keymap = new Keymap();
-    let insertMargedKeymap: Keymap = new Keymap();
-    let visualMargedKeymap: Keymap = new Keymap();
-    if (presetKeymaps?.normal)
-        normalMargedKeymap.marge(presetKeymaps.normal);
-    if (customKeymaps?.normal)
-        normalMargedKeymap.marge(customKeymaps.normal);
-    normalMargedKeymap.marge(normalKeymap);
-    if (presetKeymaps?.insert)
-        insertMargedKeymap.marge(presetKeymaps.insert);
-    if (customKeymaps?.insert)
-        insertMargedKeymap.marge(customKeymaps.insert);
-    insertMargedKeymap.marge(insertKeymap);
-    if (presetKeymaps?.visual)
-        visualMargedKeymap.marge(presetKeymaps.visual);
-    if (customKeymaps?.visual)
-        visualMargedKeymap.marge(customKeymaps.visual);
-    visualMargedKeymap.marge(visualKeymap);
+        let normalMargedKeymap: Keymap = new Keymap();
+        let insertMargedKeymap: Keymap = new Keymap();
+        let visualMargedKeymap: Keymap = new Keymap();
+        if (presetKeymaps?.normal)
+            normalMargedKeymap.marge(presetKeymaps.normal);
+        if (customKeymaps?.normal)
+            normalMargedKeymap.marge(customKeymaps.normal);
+        normalMargedKeymap.marge(normalKeymap);
+        if (presetKeymaps?.insert)
+            insertMargedKeymap.marge(presetKeymaps.insert);
+        if (customKeymaps?.insert)
+            insertMargedKeymap.marge(customKeymaps.insert);
+        insertMargedKeymap.marge(insertKeymap);
+        if (presetKeymaps?.visual)
+            visualMargedKeymap.marge(presetKeymaps.visual);
+        if (customKeymaps?.visual)
+            visualMargedKeymap.marge(customKeymaps.visual);
+        visualMargedKeymap.marge(visualKeymap);
 
-    insertTimeout = insertTimeout && insertTimeout >= 0 ? insertTimeout : null;
+        insertTimeout = insertTimeout && insertTimeout >= 0 ? insertTimeout : null;
 
-    let setting: ExtConfig = {
-        preset: presetKeymaps,
-        customKeymaps,
-        customKeymapsPath: customKeymapsPath ?? null,
-        keymaps: {
-            normal: normalKeymap,
-            insert: insertKeymap,
-            visual: visualKeymap,
-        },
-        margedKeymaps: {
-            normal: normalMargedKeymap,
-            insert: insertMargedKeymap,
-            visual: visualMargedKeymap,
-        },
-        insertTimeout,
-        normalCursorStyle: toVSCodeCursorStyle(normalCursorStyle),
-        insertCursorStyle: toVSCodeCursorStyle(insertCursorStyle),
-        visualCursorStyle: toVSCodeCursorStyle(visualCursorStyle),
-        searchCursorStyle: toVSCodeCursorStyle(searchCursorStyle),
-        cursorStyles,
-    };
+        let setting: ExtConfig = {
+            preset: presetKeymaps,
+            customKeymaps,
+            customKeymapsPath: customKeymapsPath ?? null,
+            keymaps: {
+                normal: normalKeymap,
+                insert: insertKeymap,
+                visual: visualKeymap,
+            },
+            margedKeymaps: {
+                normal: normalMargedKeymap,
+                insert: insertMargedKeymap,
+                visual: visualMargedKeymap,
+            },
+            insertTimeout,
+            normalCursorStyle: toVSCodeCursorStyle(normalCursorStyle),
+            insertCursorStyle: toVSCodeCursorStyle(insertCursorStyle),
+            visualCursorStyle: toVSCodeCursorStyle(visualCursorStyle),
+            searchCursorStyle: toVSCodeCursorStyle(searchCursorStyle),
+            cursorStyles,
+        };
 
-    return setting;
+        return setting;
+    } catch (e) {
+        if (e instanceof ExtensionError) {
+            throw e;
+        } else {
+            throw new ExtensionError("error loading config.", e);
+        }
+    }
 }
 
 type CompositionState = {
@@ -230,7 +246,7 @@ class Extension extends EventEmitter {
 
     getConfig(): ExtConfig {
         if (!this._config)
-            throw new Error("config is not loaded yet");
+            throw new ExtensionError("config is not loaded yet");
         return this._config;
     }
 
@@ -250,7 +266,7 @@ class Extension extends EventEmitter {
     }
     setActiveEditor(editor: VSModalEditor) {
         if (!(editor instanceof VSModalEditor))
-            throw new Error("editor must be VSModalEditor");
+            throw new TypeError("editor must be VSModalEditor");
         this._curEditor = editor;
         this.updateStatusBarText();
     }
@@ -296,7 +312,7 @@ class Extension extends EventEmitter {
     _createEditorWithConfig(editor: vscode.TextEditor) {
         let config = this._config;
         if (!config)
-            throw new Error("config is not loaded yet");
+            throw new ExtensionError("config is not loaded yet");
 
         let modalEditor = new VSModalEditor(
             editor,
@@ -310,8 +326,7 @@ class Extension extends EventEmitter {
     _updateEditorWithConfig(editor: VSModalEditor) {
         let config = this._config;
         if (!config)
-            // config = await this._updateConfig();
-            throw new Error("config is not loaded yet");
+            throw new ExtensionError("config is not loaded yet");
 
         editor.getInsertModal().setTimeout(config.insertTimeout);
         editor.setCursorStyle(config.cursorStyles);
@@ -382,7 +397,7 @@ class Extension extends EventEmitter {
 
 function getExtension(): Extension {
     if (!_extension)
-        throw Error("ModalEx extension not enabled");
+        throw new ExtensionError("ModalEx not enabled");
     return _extension;
 }
 
@@ -397,12 +412,15 @@ async function onType(args: { text: string; }) {
             await extension.emitKeys(args.text);
         }
     } catch (e) {
-        if (e instanceof Error) {
-            notifyError(e.message);
+        if (e instanceof ExtensionError) {
             logError(e.message);
+            notifyError(e.message);
+        } else if (e instanceof Error) {
+            logError(e.message);
+            notifyError(`unknown error when processing key "${args.text}"`);
         } else {
-            notifyError(`error processing key "${args.text}"`);
             logError(`unknown error when processing key "${args.text}"`);
+            notifyError(`unknown error when processing key "${args.text}"`);
         }
     }
 }
@@ -441,12 +459,15 @@ async function onCompositionEnd() {
 
         await extension.emitKeys(compositionText);
     } catch (e) {
-        if (e instanceof Error) {
-            notifyError(e.message);
+        if (e instanceof ExtensionError) {
             logError(e.message);
+            notifyError(e.message);
+        } else if (e instanceof Error) {
+            logError(e.message);
+            notifyError(`unknown error when processing key "${compositionText}"`);
         } else {
-            notifyError(`error processing key "${compositionText}"`);
             logError(`unknown error when processing key "${compositionText}"`);
+            notifyError(`unknown error when processing key "${compositionText}"`);
         }
     }
 }
@@ -474,12 +495,15 @@ function handleDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
         extension.updateConfig();
         log("configuration updated.");
     } catch (e) {
-        if (e instanceof Error) {
-            notifyError("error updating from configuration.\n" + e.message);
+        if (e instanceof ExtensionError) {
             logError(e.message);
+            notifyError(e.message);
+        } else if (e instanceof Error) {
+            logError(e.message);
+            notifyError("Unknown error updating from configuration");
         } else {
-            notifyError("error updating from configuration");
-            logError(`Unknown error when updating from configuration`);
+            logError(`Unknown error updating from configuration`);
+            notifyError("Unknown error updating from configuration");
         }
     }
 }
@@ -535,9 +559,17 @@ function enable() {
         vscode.commands.executeCommand("setContext", `${extensionName}.isEnable`, true);
 
         log("ModalEx enable");
-    }).catch((e) => { 
-        logError(`Error when enable extension: ${e.message}`);
-        notifyError(`Error when enable extension: ${e.message}`);
+    }).catch((e) => {
+        if (e instanceof ExtensionError) {
+            logError(e.message);
+            notifyError(e.message);
+        } else if (e instanceof Error) {
+            logError(e.message);
+            notifyError(`Error when enable extension.`);
+        } else {
+            logError(`Error when enable extension.`);
+            notifyError(`Error when enable extension.`);
+        }
     });
 }
 
