@@ -33,12 +33,12 @@ abstract class BaseModal {
 
     _currentKeySeq: string[];
 
-    constructor(name: string, editor: Editor, option?: {
+    constructor(name: string, editor: Editor, options?: {
         timeout?: number;
     }) {
         this._name = name;
         this._editor = editor;
-        this._timeout = option?.timeout ?? null;
+        this._timeout = options?.timeout ?? null;
         this._currentKeySeq = [];
     }
 
@@ -75,16 +75,16 @@ class KeymapModal extends BaseModal {
 
     _onExecCommand: ((modal: KeymapModal, command: string, args: any) => void | Thenable<void>) | null;
 
-    constructor(name: string, editor: Editor, option?: {
+    constructor(name: string, editor: Editor, options?: {
         timeout?: number,
         onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
         onDefault?: (modal: KeymapModal) => void | Thenable<void>,
         onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
     }) {
-        super(name, editor, option);
-        this._onTimeout = option?.onTimeout ?? null;
-        this._onDefault = option?.onDefault ?? null;
-        this._onExecCommand = option?.onExecCommand ?? null;
+        super(name, editor, options);
+        this._onTimeout = options?.onTimeout ?? null;
+        this._onDefault = options?.onDefault ?? null;
+        this._onExecCommand = options?.onExecCommand ?? null;
 
         this._rootKeymap = new Keymap();
 
@@ -172,13 +172,13 @@ class KeymapModal extends BaseModal {
 class VisualModal extends KeymapModal {
     _visualType: VisualType;
 
-    constructor(name: string, editor: Editor, option?: {
+    constructor(name: string, editor: Editor, options?: {
         timeout?: number,
         onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
         onDefault?: (modal: KeymapModal) => void | Thenable<void>,
         onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
     }) {
-        super(name, editor, option);
+        super(name, editor, options);
         this._visualType = VisualType.normal;
     }
 
@@ -218,12 +218,12 @@ class SearchModal extends BaseModal {
         return this._text;
     }
 
-    override onWillEnter(option?: any): void | Thenable<void> {
+    override onWillEnter(options?: any): void | Thenable<void> {
         this._text = "";
-        if (option && typeof option === "object") {
-            this._searchRange = option?.searchRange ?? SearchRange.document;
-            this._searchDirection = option?.searchDirection ?? SearchDirection.after;
-            this._singleChar = option?.singleChar ?? false;
+        if (options && typeof options === "object") {
+            this._searchRange = options?.searchRange ?? SearchRange.document;
+            this._searchDirection = options?.searchDirection ?? SearchDirection.after;
+            this._singleChar = options?.singleChar ?? false;
         }
     }
 

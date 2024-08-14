@@ -140,7 +140,6 @@ async function asExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtCo
     let insertCursorStyle = config.get<string>("insertCursorStyle") ?? "line";
     let visualCursorStyle = config.get<string>("visualCursorStyle") ?? "block";
     let searchCursorStyle = config.get<string>("searchCursorStyle") ?? "underline";
-
     let normalKeymap = parseKeymapObj(normalKeymapObj);
     let insertKeymap = parseKeymapObj(insertKeymapObj);
     let visualKeymap = parseKeymapObj(visualKeymapObj);
@@ -197,9 +196,7 @@ class Extension extends EventEmitter {
 
     destroy() {
         this._curEditor = null;
-
         this._statusBar.dispose();
-
         for (var e of this._editors.values())
             e.destroy();
         this._editors.clear();
@@ -224,21 +221,6 @@ class Extension extends EventEmitter {
 
     getByVSCodeTextEditor(e: vscode.TextEditor): VSModalEditor | undefined {
         return this._editors.get(e);
-    }
-
-    getExtraEditor(editors: readonly vscode.TextEditor[]) {
-        let editorSet = new Set(editors);
-        let extra = [];
-        for (var e of this._editors.keys()) {
-            if (!editorSet.has(e))
-                extra.push(e);
-        }
-        editorSet.clear();
-        return extra;
-    }
-
-    getMissingEditor(editors: readonly vscode.TextEditor[]) {
-        return Array.from(editors.filter((e) => !this._editors.has(e)));
     }
 
     getCurrentEditor(): VSModalEditor | undefined {
@@ -271,7 +253,7 @@ class Extension extends EventEmitter {
             let name = modal.getName().toUpperCase();
             let msg = modal.getModalMessage();
             let s: string;
-            if (msg && msg !== "")
+            if (msg)
                 s = `-- ${name} --: ${msg}`;
             else
                 s = `-- ${name} --`;
@@ -325,7 +307,7 @@ class Extension extends EventEmitter {
             this._updateEditorConfig(editor);
     }
 
-    async onNewEditor(editor: vscode.TextEditor) {
+    attach(editor: vscode.TextEditor) {
         let modalEditor = new VSModalEditor(editor);
         this._editors.set(editor, modalEditor);
 
@@ -337,11 +319,43 @@ class Extension extends EventEmitter {
         return modalEditor;
     }
 
-    onCloseEditor(editor: vscode.TextEditor) {
+    detach(editor: vscode.TextEditor) {
         let me = this._editors.get(editor);
         if (me) {
             me.destroy();
             this._editors.delete(editor);
+        }
+    }
+
+    activeEditor(editor: vscode.TextEditor) {
+        if (!this.exist(editor))
+            this.attach(editor);
+        this.setCurrentEditor(editor);
+    }
+
+    updateVisibleEditors(editors: readonly vscode.TextEditor[]) {
+        let noExist = [];
+        if (editors.length < 5) {
+            for (let vsEditor of this._editors.keys()) {
+                if (!editors.includes(vsEditor))
+                    noExist.push(vsEditor);
+            }
+        } else {
+            let editorSet = new Set(editors);
+            for (let vsEditor of this._editors.keys()) {
+                if (!editorSet.has(vsEditor))
+                    noExist.push(vsEditor);
+            }
+        }
+
+        for (let vsEditor of editors) {
+            if (!this._editors.has(vsEditor)) {
+                this.attach(vsEditor);
+            }
+        }
+
+        for (let vsEditor of noExist) {
+            this.detach(vsEditor);
         }
     }
 }
@@ -355,7 +369,6 @@ function getExtension(): Extension {
 async function onType(args: { text: string; }) {
     try {
         let extension = getExtension();
-
 
         if (extension.compositionState.isInComposition) {
             extension.compositionState.compositionText += args.text;
@@ -420,33 +433,23 @@ async function onCompositionEnd() {
 
 function handleDidChangeActiveTextEditor(e: vscode.TextEditor | undefined) {
     let extension = getExtension();
-    if (e && extension) {
-        if (!extension.exist(e)) {
-            extension.onNewEditor(e);
-        }
-        extension.setCurrentEditor(e);
+    if (e) {
+        extension.activeEditor(e);
     } else if (!e && vscode.window.visibleTextEditors.length === 0) {
-        extension?.setCurrentEditor(null);
+        extension.setCurrentEditor(null);
     }
 }
 
 async function handleDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor[]) {
     let extension = getExtension();
-
-    let missing: vscode.TextEditor[] = extension.getMissingEditor(editors);
-    let extra: vscode.TextEditor[] = extension.getExtraEditor(editors);
-
-    for (let e of extra)
-        await extension.onCloseEditor(e);
-    for (let e of missing)
-        await extension.onNewEditor(e);
+    extension.updateVisibleEditors(editors);
 }
 
 function handleDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
     try {
         let extension = getExtension();
         extension.updateConfig();
-        log("configuration update.");
+        log("configuration updated.");
     } catch (e) {
         if (e instanceof Error) {
             notifyError("error updating from configuration.\n" + e.message);
@@ -493,9 +496,8 @@ function enable() {
         vscode.window.onDidChangeTextEditorSelection(handleDidChangeTextEditorSelection),
     );
 
-    for (var e of vscode.window.visibleTextEditors) {
-        _extension.onNewEditor(e);
-    }
+    for (var e of vscode.window.visibleTextEditors)
+        _extension.attach(e);
     handleDidChangeActiveTextEditor(vscode.window.activeTextEditor);
 
     _extension.showStatusBar();
