@@ -2,12 +2,7 @@ let insert = {};
 
 let normal = {
     i: "modalex.enterInsert",
-    a: {
-        "command": "modalex.enterInsert",
-        "args": {
-            "right": true
-        }
-    },
+    a: "modalex.enterInsertRight",
     h: "cursorLeft",
     j: "cursorDown",
     k: "cursorUp",
@@ -72,12 +67,7 @@ let visual = {
     k: "cursorUpSelect",
     l: "cursorRightSelect",
     I: "modalex.enterInsert",
-    A: {
-        "command": "modalex.enterInsert",
-        "args": {
-            "right": true
-        }
-    },
+    A: "modalex.enterInsertRight",
     w: "cursorWordStartRightSelect",
     e: "cursorWordRightSelect",
     b: "cursorWordLeftSelect",

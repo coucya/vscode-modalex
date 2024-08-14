@@ -185,6 +185,7 @@ function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(`${extensionName}.reload`, reloadConfig),
         vscode.commands.registerCommand(`${extensionName}.enterNormal`, _enterNormal),
         vscode.commands.registerCommand(`${extensionName}.enterInsert`, _enterInsert),
+        vscode.commands.registerCommand(`${extensionName}.enterInsertRight`, () => _enterInsert({ right: true })),
         vscode.commands.registerCommand(`${extensionName}.enterVisual`, _enterVisual),
         vscode.commands.registerCommand(`${extensionName}.enterVisualLine`, _enterVisualLine),
         vscode.commands.registerCommand(`${extensionName}.enterVisualBlock`, _enterVisualBlock),
