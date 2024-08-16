@@ -165,9 +165,7 @@ class VSVisualModal extends VisualModal {
         super.onDidEnter();
         let editor = this.getEditor() as VSModalEditor;
         if (this._visualType === VisualType.block) {
-            let beg = Math.min(this._anchorChar, this._activeChar);
-            let end = Math.max(this._anchorChar, this._activeChar);
-            this._updateSelections(editor, beg, end);
+            this._updateSelections(editor, this._anchorChar, this._activeChar);
         } else if (this._visualType === VisualType.line) {
             this._updateSelections(editor);
         }
@@ -177,16 +175,16 @@ class VSVisualModal extends VisualModal {
         await vscode.commands.executeCommand(command, ...args);
     }
 
-    _updateSelections(editor: VSModalEditor, beg?: number, end?: number) {
+    _updateSelections(editor: VSModalEditor, anchorChar?: number, actionChar?: number) {
         let selections: vscode.Selection[] = [];
         if (this._activeLine >= this._anchorLine) {
             for (let i = this._activeLine; i >= this._anchorLine; i--) {
-                let s = editor.getSelectionByLine(i, beg, end);
+                let s = editor.getSelectionByLine(i, anchorChar, actionChar);
                 s && selections.push(s);
             }
         } else {
             for (let i = this._activeLine; i <= this._anchorLine; i++) {
-                let s = editor.getSelectionByLine(i, beg, end);
+                let s = editor.getSelectionByLine(i, anchorChar, actionChar);
                 s && selections.push(s);
             }
         }
@@ -205,28 +203,20 @@ class VSVisualModal extends VisualModal {
 
     _visualBlock_up(editor: VSModalEditor) {
         this._activeLine--;
-        let beg = Math.min(this._anchorChar, this._activeChar);
-        let end = Math.max(this._anchorChar, this._activeChar);
-        this._updateSelections(editor, beg, end);
+        this._updateSelections(editor, this._anchorChar, this._activeChar);
     }
     _visualBlock_down(editor: VSModalEditor) {
         this._activeLine++;
-        let beg = Math.min(this._anchorChar, this._activeChar);
-        let end = Math.max(this._anchorChar, this._activeChar);
-        this._updateSelections(editor, beg, end);
+        this._updateSelections(editor, this._anchorChar, this._activeChar);
     }
     _visualBlock_left(editor: VSModalEditor) {
         this._activeChar--;
-        let beg = Math.min(this._anchorChar, this._activeChar);
-        let end = Math.max(this._anchorChar, this._activeChar);
-        this._updateSelections(editor, beg, end);
+        this._updateSelections(editor, this._anchorChar, this._activeChar);
     }
 
     _visualBlock_right(editor: VSModalEditor) {
         this._activeChar++;
-        let beg = Math.min(this._anchorChar, this._activeChar);
-        let end = Math.max(this._anchorChar, this._activeChar);
-        this._updateSelections(editor, beg, end);
+        this._updateSelections(editor, this._anchorChar, this._activeChar);
     }
 
     cursorUp() {
@@ -404,19 +394,22 @@ class VSModalEditor extends Editor {
         return selection.active.character >= length;
     }
 
-    getSelectionByLine(line: number, beg?: number, end?: number): vscode.Selection | undefined {
+    getSelectionByLine(line: number, anchorChar?: number, actionChar?: number): vscode.Selection | undefined {
         let document = this._vsTextEditor.document;
         if (line < 0 || line >= document.lineCount)
             return undefined;
 
         let range = document.lineAt(line).range;
-        let s = range.start;
-        let e = range.end;
-        if (beg && beg >= s.character && beg <= e.character)
-            s = new vscode.Position(s.line, beg);
-        if (end && end >= s.character && end <= e.character)
-            e = new vscode.Position(e.line, end);
-        return new vscode.Selection(s, e);
+        let anchor = range.start;
+        let action = range.end;
+        let endChar = action.character;
+
+        if (anchorChar !== undefined)
+            anchor = anchor.with(undefined, Math.max(Math.min(endChar, anchorChar), 0));
+        if (actionChar !== undefined)
+            action = action.with(undefined, Math.max(Math.min(endChar, actionChar), 0));
+
+        return new vscode.Selection(anchor, action);
     }
 
     getLineRange(at: vscode.Position | number, after?: boolean): vscode.Range | undefined {
