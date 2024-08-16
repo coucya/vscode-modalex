@@ -99,7 +99,7 @@ let visual = {
     F: "modalex.searchCharLineBefore"
 };
 
-export {
+export default {
     normal,
     insert,
     visual

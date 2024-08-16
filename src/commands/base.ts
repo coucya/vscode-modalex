@@ -15,46 +15,7 @@ function _enterNormal() {
 function _enterInsert(options?: { right: boolean; }) {
     let editor = getExtension().getActiveEditor();
     if (editor) {
-        let vsEditor = editor.getVSCodeTextEditor();
-
-        let newSelections = [];
-        if (editor.isNormal() && options?.right) {
-            for (var selection of vsEditor.selections) {
-                let pos = selection.active;
-                if (!editor.isAtLineEnd(selection))
-                    pos = new vscode.Position(pos.line, pos.character + 1);
-                let newSelection = new vscode.Selection(pos, pos);
-                newSelections.push(newSelection);
-            }
-        } else if (editor.isVisual(VisualType.line) && options?.right) {
-            let sl = vsEditor.selection.start.line;
-            let el = vsEditor.selection.end.line;
-            for (var i = sl; i <= el; i++) {
-                let c = editor.lineLength(i) ?? 0;
-                let newSelection = new vscode.Selection(new vscode.Position(i, c), new vscode.Position(i, c));
-                newSelections.push(newSelection);
-            }
-        } else if (editor.isVisual(VisualType.line)) {
-            let sl = vsEditor.selection.start.line;
-            let el = vsEditor.selection.end.line;
-            for (var i = sl; i <= el; i++) {
-                let newSelection = new vscode.Selection(new vscode.Position(i, 0), new vscode.Position(i, 0));
-                newSelections.push(newSelection);
-            }
-        } else if (options?.right) {
-            for (var selection of vsEditor.selections) {
-                let newSelection = new vscode.Selection(selection.end, selection.end);
-                newSelections.push(newSelection);
-            }
-        } else {
-            for (var selection of vsEditor.selections) {
-                let newSelection = new vscode.Selection(selection.start, selection.start);
-                newSelections.push(newSelection);
-            }
-        }
-
-        editor.enterMode(ModalType.insert);
-        vsEditor.selections = newSelections;
+        editor.enterMode(ModalType.insert, options);
     }
 }
 function _enterVisual() {
@@ -75,7 +36,6 @@ function _enterVisualBlock() {
         editor.enterMode(ModalType.visual, { visualType: VisualType.block });
     }
 }
-
 
 function _searchCharLineBefore() {
     let ext = getExtension();

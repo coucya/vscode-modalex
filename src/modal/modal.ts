@@ -26,12 +26,12 @@ enum SearchRange {
 }
 
 abstract class BaseModal {
-    _name: string;
-    _editor: Editor;
+    protected _name: string;
+    protected _editor: Editor;
 
-    _timeout: number | null;
+    protected _timeout: number | null;
 
-    _currentKeySeq: string[];
+    protected _currentKeySeq: string[];
 
     constructor(name: string, editor: Editor, options?: {
         timeout?: number;
@@ -56,6 +56,7 @@ abstract class BaseModal {
     onWillEnter(option?: any): void | Thenable<void> { }
     onDidEnter(): void | Thenable<void> { }
     onWillLeave(): void | Thenable<void> { }
+    onDidLeave(): void | Thenable<void> { }
 
     onKey(key: string): void | Thenable<void> { }
     onTimeout(): void | Thenable<void> { }
@@ -65,26 +66,26 @@ abstract class BaseModal {
 }
 
 class KeymapModal extends BaseModal {
-    _rootKeymap: Keymap;
-    _currentKeymap: Keymap | null;
+    private _rootKeymap: Keymap;
+    private _currentKeymap: Keymap | null;
 
-    _timeoutHandle: NodeJS.Timeout | null = null;
+    private _timeoutHandle: NodeJS.Timeout | null = null;
 
-    _onTimeout: ((modal: KeymapModal) => void | Thenable<void>) | null;
-    _onDefault: ((modal: KeymapModal) => void | Thenable<void>) | null;
+    // _onTimeout: ((modal: KeymapModal) => void | Thenable<void>) | null;
+    // _onDefault: ((modal: KeymapModal) => void | Thenable<void>) | null;
 
-    _onExecCommand: ((modal: KeymapModal, command: string, args: any) => void | Thenable<void>) | null;
+    // _onExecCommand: ((modal: KeymapModal, command: string, args: any) => void | Thenable<void>) | null;
 
     constructor(name: string, editor: Editor, options?: {
         timeout?: number,
-        onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
-        onDefault?: (modal: KeymapModal) => void | Thenable<void>,
-        onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
+        // onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
+        // onDefault?: (modal: KeymapModal) => void | Thenable<void>,
+        // onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
     }) {
         super(name, editor, options);
-        this._onTimeout = options?.onTimeout ?? null;
-        this._onDefault = options?.onDefault ?? null;
-        this._onExecCommand = options?.onExecCommand ?? null;
+        // this._onTimeout = options?.onTimeout ?? null;
+        // this._onDefault = options?.onDefault ?? null;
+        // this._onExecCommand = options?.onExecCommand ?? null;
 
         this._rootKeymap = new Keymap();
 
@@ -118,17 +119,9 @@ class KeymapModal extends BaseModal {
         }
     }
 
-    override async onExecCommand(command: string, args: any) {
-        if (this._onExecCommand) await this._onExecCommand(this, command, args);
-    }
-
-    override async onTimeout() {
-        if (this._onTimeout) await this._onTimeout(this);
-    }
-    override async onDefault() {
-        if (this._onDefault) await this._onDefault(this);
-    }
     override  async onKey(key: string) {
+        super.onKey(key);
+
         this._clearTimeout();
 
         this._currentKeySeq.push(key);
@@ -142,7 +135,7 @@ class KeymapModal extends BaseModal {
 
         if (actionOrKeymap instanceof Keymap) {
             this._currentKeymap = actionOrKeymap;
-            if (typeof this._timeout === "number") {
+            if (this._timeout !== null) {
                 this._timeoutHandle = setTimeout(async () => {
                     try {
                         this._timeoutHandle = null;
@@ -174,15 +167,16 @@ class VisualModal extends KeymapModal {
 
     constructor(name: string, editor: Editor, options?: {
         timeout?: number,
-        onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
-        onDefault?: (modal: KeymapModal) => void | Thenable<void>,
-        onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
+        // onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
+        // onDefault?: (modal: KeymapModal) => void | Thenable<void>,
+        // onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
     }) {
         super(name, editor, options);
         this._visualType = VisualType.normal;
     }
 
     override onWillEnter(option?: any): void | Thenable<void> {
+        super.onWillEnter(option);
         let vt: VisualType = option?.visualType ?? VisualType.normal;
         this._visualType = vt;
     }

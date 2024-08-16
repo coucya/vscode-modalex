@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 
 import { extensionName } from "../config";
 import { getExtension } from "../extension";
-import { CursorMoveDir } from "../VSEditor";
 import { ModalType } from "../modal/modal";
 
 const commandPrefix = `${extensionName}.action`;
@@ -87,11 +86,41 @@ function _transformTo(upper: boolean) {
     }
 }
 
+function _visaulCursorUp() {
+    let editor = getExtension().getActiveEditor();
+    if (!editor)
+        return;
+    editor.visualCursorUp();
+}
+
+function _visaulCursorDown() {
+    let editor = getExtension().getActiveEditor();
+    if (!editor)
+        return;
+    editor.visualCursorDown();
+}
+function _visaulCursorLeft() {
+    let editor = getExtension().getActiveEditor();
+    if (!editor)
+        return;
+    editor.visualCursorLeft();
+}
+function _visaulCursorRight() {
+    let editor = getExtension().getActiveEditor();
+    if (!editor)
+        return;
+    editor.visualCursorRight();
+}
+
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(`${commandPrefix}.paste`, _paste),
         vscode.commands.registerCommand(`${commandPrefix}.transformToUppercase`, () => _transformTo(true)),
         vscode.commands.registerCommand(`${commandPrefix}.transformToLowercase`, () => _transformTo(false)),
+        vscode.commands.registerCommand(`${commandPrefix}.visualCursorUp`, _visaulCursorUp),
+        vscode.commands.registerCommand(`${commandPrefix}.visualCursorDown`, _visaulCursorDown),
+        vscode.commands.registerCommand(`${commandPrefix}.visualCursorLeft`, _visaulCursorLeft),
+        vscode.commands.registerCommand(`${commandPrefix}.visualCursorRight`, _visaulCursorRight)
     );
 }
 

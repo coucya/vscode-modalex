@@ -8,15 +8,11 @@ import { parseKeymapConfigObject, ParseKeymapError } from './modal/parser';
 import { extensionName, extensionDisplayName } from "./config";
 import { ExtConfig } from "./config";
 
-import * as presetSimple from "./presets/simple";
+import presets from "./presets";
 
 import { CursorStyles, VSModalEditor } from "./VSEditor";
 import { ExtensionError } from './error';
 
-
-const presets = {
-    simple: presetSimple
-};
 
 let channel: vscode.OutputChannel | null = null;
 let _extension: Extension | null = null;

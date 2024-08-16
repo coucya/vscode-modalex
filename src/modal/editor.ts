@@ -7,13 +7,13 @@ import { BaseModal, KeymapModal, VisualModal, SearchModal } from "./modal";
 import { ModalType, VisualType } from "./modal";
 
 abstract class Editor extends EventEmitter {
-    _normalModal: KeymapModal;
-    _insertModal: KeymapModal;
-    _visualModal: VisualModal;
-    _searchModal: SearchModal;
+    private _normalModal: KeymapModal;
+    private _insertModal: KeymapModal;
+    private _visualModal: VisualModal;
+    private _searchModal: SearchModal;
 
-    _currentModal: BaseModal;
-    _currentModalType: ModalType;
+    private _currentModal: BaseModal;
+    private _currentModalType: ModalType;
 
     constructor(option?: {
         normalModal?: KeymapModal,
@@ -44,18 +44,14 @@ abstract class Editor extends EventEmitter {
     protected setVisualModal(modal: VisualModal) { this._visualModal = modal; }
     protected setSearchModal(modal: SearchModal) { this._searchModal = modal; }
 
-    async _emitkey(key: string) {
-        await this._currentModal.onKey(key);
-    }
-
     async emitKeys(key: string) {
         for (var k of key) {
-            await this._emitkey(k);
+            await this._currentModal.onKey(k);
         }
     }
 
     getCurrentKeySeq(): readonly string[] {
-        return this._currentModal._currentKeySeq;
+        return this._currentModal.getCurrentKeySeq();
     }
 
     clearKeymapsAll() {
@@ -87,13 +83,15 @@ abstract class Editor extends EventEmitter {
     enterMode(modalType: string | ModalType, option?: any,) {
         let modal: BaseModal | null = null;
         let type_: ModalType | null = null;
+
         if (typeof modalType === "string") {
             switch (modalType) {
                 case "normal": type_ = ModalType.normal; modal = this._normalModal; break;
                 case "insert": type_ = ModalType.insert; modal = this._insertModal; break;
                 case "visual": type_ = ModalType.visual; modal = this._visualModal; break;
                 case "search": type_ = ModalType.search; modal = this._searchModal; break;
-                default: modal = null; break;
+                default:
+                    throw new ModalRuntimeError(`mode "${modalType}" not found`);
             }
         } else {
             type_ = modalType;
@@ -102,19 +100,23 @@ abstract class Editor extends EventEmitter {
                 case ModalType.insert: modal = this._insertModal; break;
                 case ModalType.visual: modal = this._visualModal; break;
                 case ModalType.search: modal = this._searchModal; break;
-                default: modal = null; break;
+                default:
+                    throw new ModalRuntimeError(`mode "${modalType}" not found`);
             }
         }
 
         if (modal && type_) {
-            this._currentModal.onWillLeave();
+            let oldModal = this._currentModal;
 
+            oldModal.onWillLeave();
             modal.onWillEnter(option);
 
             this.resetAll();
 
             this._currentModal = modal;
             this._currentModalType = type_;
+
+            oldModal.onDidLeave();
             modal.onDidEnter();
 
             this.emit("enterMode", type_, this);

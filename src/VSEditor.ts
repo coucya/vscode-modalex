@@ -16,19 +16,6 @@ enum CursorMoveDir {
     right = 4,
 }
 
-function translatePos(pos: vscode.Position, x: number, y: number, maxWidth?: number): vscode.Position {
-    let line = pos.line + y;
-    let character = pos.character + x;
-    line = line < 0 ? 0 : line;
-    character = character < 0 ? 0 : (maxWidth && character > maxWidth ? maxWidth : character);
-    return new vscode.Position(line, character);
-}
-function translate(selection: vscode.Selection, x: number, y: number, select: boolean = false, maxWidth?: number) {
-    let anchor = select ? selection.anchor : translatePos(selection.anchor, x, y, maxWidth);
-    let active = translatePos(selection.active, x, y, maxWidth);
-    return new vscode.Selection(anchor, active);
-}
-
 function selectionWidth(s: vscode.Selection) {
     return s.end.character - s.start.character;
 }
@@ -44,11 +31,81 @@ function selectionToString(selection: vscode.Selection): string {
     return `${selection.anchor.line}:${selection.anchor.character} - ${selection.active.line}:${selection.active.character}`;
 }
 
+class VSNormalModal extends KeymapModal {
+    constructor(editor: VSModalEditor) {
+        super("normal", editor);
+    }
+    override async onExecCommand(command: string, ...args: any[]) {
+        await vscode.commands.executeCommand(command, ...args);
+    }
+}
+
+class VSInsertModal extends KeymapModal {
+    constructor(editor: VSModalEditor) {
+        super("insert", editor);
+    }
+
+    override async onWillEnter(options?: any) {
+        let editor = this.getEditor() as VSModalEditor;
+        let vsEditor = editor.getVSCodeTextEditor();
+
+        let newSelections = [];
+        if (editor.isNormal() && options?.right) {
+            for (var selection of vsEditor.selections) {
+                let pos = selection.active;
+                if (!editor.isAtLineEnd(selection))
+                    pos = new vscode.Position(pos.line, pos.character + 1);
+                let newSelection = new vscode.Selection(pos, pos);
+                newSelections.push(newSelection);
+            }
+        } else if (editor.isVisual()) {
+            if (options?.right) {
+                for (var selection of vsEditor.selections) {
+                    let newSelection = new vscode.Selection(selection.end, selection.end);
+                    newSelections.push(newSelection);
+                }
+            } else {
+                for (var selection of vsEditor.selections) {
+                    let newSelection = new vscode.Selection(selection.start, selection.start);
+                    newSelections.push(newSelection);
+                }
+            }
+        } else if (options?.right) {
+            for (var selection of vsEditor.selections) {
+                let newSelection = new vscode.Selection(selection.end, selection.end);
+                newSelections.push(newSelection);
+            }
+        } else {
+            for (var selection of vsEditor.selections) {
+                let newSelection = new vscode.Selection(selection.start, selection.start);
+                newSelections.push(newSelection);
+            }
+        }
+        vsEditor.selections = newSelections;
+    }
+
+    override async onExecCommand(command: string, ...args: any[]) {
+        await vscode.commands.executeCommand(command, ...args);
+    }
+    override async onTimeout() {
+        let text = this.getCurrentKeySeq().join("");
+        await vscode.commands.executeCommand('default:type', { text });
+    }
+    override async onDefault() {
+        let text = this.getCurrentKeySeq().join("");
+        await vscode.commands.executeCommand('default:type', { text });
+    }
+}
+
 class VSSearchModal extends SearchModal {
     _oldModalType: ModalType = ModalType.normal;
 
-    constructor(name: string, editor: Editor) {
-        super(name, editor);
+    constructor(editor: Editor) {
+        super("search", editor);
+    }
+
+    override async onExecCommand(command: string, ...args: any[]) {
+        await vscode.commands.executeCommand(command, ...args);
     }
 
     override onWillEnter(option?: any): void | Thenable<void> {
@@ -80,14 +137,152 @@ class VSSearchModal extends SearchModal {
     }
 }
 
+class VSVisualModal extends VisualModal {
+    _anchorLine: number = 0;
+    _activeLine: number = 0;
+    _anchorChar: number = 0;
+    _activeChar: number = 0;
+
+    constructor(editor: Editor) {
+        super("visual", editor);
+    }
+
+    override getEditor(): VSModalEditor {
+        return this._editor as VSModalEditor;
+    }
+
+    override onWillEnter(option?: any) {
+        super.onWillEnter(option);
+        let editor = this.getEditor() as VSModalEditor;
+        let selection = editor.getVSCodeTextEditor().selection;
+        this._anchorLine = selection.anchor.line;
+        this._activeLine = selection.active.line;
+        this._anchorChar = selection.anchor.character;
+        this._activeChar = selection.active.character;
+    }
+
+    override onDidEnter(): void | Thenable<void> {
+        super.onDidEnter();
+        let editor = this.getEditor() as VSModalEditor;
+        if (this._visualType === VisualType.block) {
+            let beg = Math.min(this._anchorChar, this._activeChar);
+            let end = Math.max(this._anchorChar, this._activeChar);
+            this._updateSelections(editor, beg, end);
+        } else if (this._visualType === VisualType.line) {
+            this._updateSelections(editor);
+        }
+    }
+
+    override async onExecCommand(command: string, ...args: any[]) {
+        await vscode.commands.executeCommand(command, ...args);
+    }
+
+    _updateSelections(editor: VSModalEditor, beg?: number, end?: number) {
+        let selections: vscode.Selection[] = [];
+        if (this._activeLine >= this._anchorLine) {
+            for (let i = this._activeLine; i >= this._anchorLine; i--) {
+                let s = editor.getSelectionByLine(i, beg, end);
+                s && selections.push(s);
+            }
+        } else {
+            for (let i = this._activeLine; i <= this._anchorLine; i++) {
+                let s = editor.getSelectionByLine(i, beg, end);
+                s && selections.push(s);
+            }
+        }
+        editor.getVSCodeTextEditor().selections = selections;
+    }
+
+    _visualLine_up(editor: VSModalEditor) {
+        this._activeLine--;
+        this._updateSelections(editor);
+    }
+
+    _visualLine_down(editor: VSModalEditor) {
+        this._activeLine++;
+        this._updateSelections(editor);
+    }
+
+    _visualBlock_up(editor: VSModalEditor) {
+        this._activeLine--;
+        let beg = Math.min(this._anchorChar, this._activeChar);
+        let end = Math.max(this._anchorChar, this._activeChar);
+        this._updateSelections(editor, beg, end);
+    }
+    _visualBlock_down(editor: VSModalEditor) {
+        this._activeLine++;
+        let beg = Math.min(this._anchorChar, this._activeChar);
+        let end = Math.max(this._anchorChar, this._activeChar);
+        this._updateSelections(editor, beg, end);
+    }
+    _visualBlock_left(editor: VSModalEditor) {
+        this._activeChar--;
+        let beg = Math.min(this._anchorChar, this._activeChar);
+        let end = Math.max(this._anchorChar, this._activeChar);
+        this._updateSelections(editor, beg, end);
+    }
+
+    _visualBlock_right(editor: VSModalEditor) {
+        this._activeChar++;
+        let beg = Math.min(this._anchorChar, this._activeChar);
+        let end = Math.max(this._anchorChar, this._activeChar);
+        this._updateSelections(editor, beg, end);
+    }
+
+    cursorUp() {
+        let editor = this.getEditor();
+        let vsEditor = editor.getVSCodeTextEditor();
+        if (this.getVisualType() === VisualType.line) {
+            this._visualLine_up(editor);
+        } else if (this.getVisualType() === VisualType.block) {
+            this._visualBlock_up(editor);
+        } else {
+            vscode.commands.executeCommand("cursorUpSelect");
+        }
+        vsEditor.revealRange(vsEditor.selection);
+    }
+    cursorDown() {
+        let editor = this.getEditor();
+        let vsEditor = editor.getVSCodeTextEditor();
+        if (this.getVisualType() === VisualType.line) {
+            this._visualLine_down(editor);
+        } else if (this.getVisualType() === VisualType.block) {
+            this._visualBlock_down(editor);
+        } else {
+            vscode.commands.executeCommand("cursorDownSelect");
+        }
+        vsEditor.revealRange(vsEditor.selection);
+    }
+    cursorLeft() {
+        let editor = this.getEditor();
+        let vsEditor = editor.getVSCodeTextEditor();
+        if (this.getVisualType() === VisualType.line) {
+            vscode.commands.executeCommand("cursorLeftSelect");
+        } else if (this.getVisualType() === VisualType.block) {
+            this._visualBlock_left(editor);
+        } else {
+            vscode.commands.executeCommand("cursorLeftSelect");
+        }
+        vsEditor.revealRange(vsEditor.selection);
+    }
+    cursorRight() {
+        let editor = this.getEditor();
+        let vsEditor = editor.getVSCodeTextEditor();
+        if (this.getVisualType() === VisualType.line) {
+            vscode.commands.executeCommand("cursorRightSelect");
+        } else if (this.getVisualType() === VisualType.block) {
+            this._visualBlock_right(editor);
+        } else {
+            vscode.commands.executeCommand("cursorRightSelect");
+        }
+        vsEditor.revealRange(vsEditor.selection);
+    }
+}
+
 class VSModalEditor extends Editor {
     _vsTextEditor: vscode.TextEditor;
     _styles: CursorStyles;
     _oldCursorStyle: vscode.TextEditorCursorStyle | undefined;
-
-    _lastSelection: vscode.Selection;
-    _visaulAnchor: vscode.Position;
-    _visaulActionOffset: number;
 
     constructor(
         vsEditor: vscode.TextEditor,
@@ -96,31 +291,13 @@ class VSModalEditor extends Editor {
     ) {
         super();
 
-        this._lastSelection = vsEditor.selection;
-        this._visaulAnchor = vsEditor.selection.anchor;
-        this._visaulActionOffset = 0;
+        let searchModal = new VSSearchModal(this);
+        let normalModal = new VSNormalModal(this);
+        let visualModal = new VSVisualModal(this);
+        let insertModal = new VSInsertModal(this);
 
-        async function execCommandCb(modal: KeymapModal, command: string, ...args: any) {
-            await vscode.commands.executeCommand(command, ...args);
-        }
-        async function insertTextCb(modal: KeymapModal) {
-            let text = modal.getCurrentKeySeq().join("");
-            await vscode.commands.executeCommand('default:type', { text });
-        }
+        insertModal.setTimeout(insertTimeout ?? null);
 
-        let searchModal = new VSSearchModal("search", this);
-        let normalModal = new KeymapModal("normal", this, {
-            onExecCommand: execCommandCb,
-        });
-        let visualModal = new VisualModal("visual", this, {
-            onExecCommand: execCommandCb,
-        });
-        let insertModal = new KeymapModal("insert", this, {
-            timeout: insertTimeout,
-            onDefault: insertTextCb,
-            onTimeout: insertTextCb,
-            onExecCommand: execCommandCb,
-        });
         this.setSearchModal(searchModal);
         this.setInsertModal(insertModal);
         this.setNormalModal(normalModal);
@@ -141,18 +318,12 @@ class VSModalEditor extends Editor {
         this.removeAllListeners();
     }
 
+    override getVisualModal(): VSVisualModal {
+        return super.getVisualModal() as VSVisualModal;
+    }
+
     override enterMode(modalType: string | ModalType, options?: any): void {
         super.enterMode(modalType, options);
-        if (this.isVisual()) {
-            let selection = this._vsTextEditor.selection;
-            this._visaulAnchor = selection.anchor;
-            this._visaulActionOffset = selection.active.character - selection.anchor.character;
-            if (this.isVisual(VisualType.line)) {
-                let newSelection = this._lineAsSelection(selection.active.line) ?? selection;
-                this._vsTextEditor.selection = newSelection;
-            }
-        }
-
         this.updateCursorStyle();
     }
 
@@ -189,19 +360,35 @@ class VSModalEditor extends Editor {
             this.getVisualModal().updateKeymap(config.visual);
     }
 
-    _lineAsSelection(line: number, beg?: number, end?: number): vscode.Selection | undefined {
-        let document = this._vsTextEditor.document;
-        if (line < 0 || line >= document.lineCount)
-            return undefined;
+    visualCursorUp() {
+        this.getVisualModal().cursorUp();
+    }
+    visualCursorDown() {
+        this.getVisualModal().cursorDown();
+    }
+    visualCursorLeft() {
+        this.getVisualModal().cursorLeft();
+    }
+    visualCursorRight() {
+        this.getVisualModal().cursorRight();
+    }
 
-        let range = document.lineAt(line).range;
-        let s = range.start;
-        let e = range.end;
-        if (beg && beg >= s.character && beg <= e.character)
-            s = new vscode.Position(s.line, beg);
-        if (end && end >= s.character && end <= e.character)
-            e = new vscode.Position(e.line, end);
-        return new vscode.Selection(s, e);
+    onSelectionChange(selections: readonly vscode.Selection[], kind: vscode.TextEditorSelectionChangeKind | undefined) {
+        if (kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+            let hasSelection = selections.some((s) => !s.isEmpty);
+            let curMode = this.getCurrentModalType();
+            if (hasSelection) {
+                if (curMode !== ModalType.visual)
+                    this.enterMode(ModalType.visual);
+            } else if (curMode !== ModalType.normal) {
+                this.enterMode(ModalType.normal);
+            }
+        } else {
+        }
+    }
+
+    selectionsContainsLine(line: number): boolean {
+        return this._vsTextEditor.selections.some(a => line >= a.start.line && line <= a.end.line);
     }
 
     lineLength(line: number): number | undefined {
@@ -217,106 +404,43 @@ class VSModalEditor extends Editor {
         return selection.active.character >= length;
     }
 
-    _selectionContainsLine(line: number): boolean {
-        return this._vsTextEditor.selections.some(a => line >= a.start.line && line <= a.end.line);
+    getSelectionByLine(line: number, beg?: number, end?: number): vscode.Selection | undefined {
+        let document = this._vsTextEditor.document;
+        if (line < 0 || line >= document.lineCount)
+            return undefined;
+
+        let range = document.lineAt(line).range;
+        let s = range.start;
+        let e = range.end;
+        if (beg && beg >= s.character && beg <= e.character)
+            s = new vscode.Position(s.line, beg);
+        if (end && end >= s.character && end <= e.character)
+            e = new vscode.Position(e.line, end);
+        return new vscode.Selection(s, e);
     }
 
-
-    _onSelectionChange(selections: readonly vscode.Selection[]) {
-        let selection: vscode.Selection = selections[0];
-        let doc = this._vsTextEditor.document;
-
-        if (this.isVisual(VisualType.normal)) {
-            let newSelection = new vscode.Selection(this._visaulAnchor, selection.active);
-            this._vsTextEditor.selection = newSelection;
-        } else if (this.isVisual(VisualType.line)) {
-            let anchorLine = this._visaulAnchor.line;
-            let curLine = selection.active.line;
-
-            let anchor, active;
-            if (anchorLine <= curLine) {
-                anchor = new vscode.Position(anchorLine, 0);
-                active = new vscode.Position(curLine, this.lineLength(curLine) ?? 0);
-            } else {
-                anchor = new vscode.Position(anchorLine, this.lineLength(anchorLine) ?? 0);
-                active = new vscode.Position(curLine, 0);
-            }
-            anchor = doc.validatePosition(anchor);
-            active = doc.validatePosition(active);
-            let newSelection = new vscode.Selection(anchor, active);
-            this._vsTextEditor.selection = newSelection;
-        } else if (this.isVisual(VisualType.block)) {
-            let anchorLine = this._visaulAnchor.line;
-            let anchorChar = this._visaulAnchor.character;
-            let curLine = selection.active.line;
-
-            if (this._lastSelection.active.line === selection.active.line) {
-                let newActionCharOffset = selection.active.character - anchorChar;
-                if (this._visaulActionOffset > 0 && newActionCharOffset > this._visaulActionOffset)
-                    this._visaulActionOffset = newActionCharOffset;
-                else if (this._visaulActionOffset < 0 && newActionCharOffset < this._visaulActionOffset)
-                    this._visaulActionOffset = newActionCharOffset;
-                else
-                    this._visaulActionOffset = newActionCharOffset;
-            }
-
-            let newSelections = [];
-            if (anchorLine <= curLine) {
-                for (var i = curLine; i >= anchorLine; i--) {
-                    let anchor = doc.validatePosition(new vscode.Position(i, anchorChar));
-                    let active = doc.validatePosition(new vscode.Position(i, anchorChar + this._visaulActionOffset));
-                    let newSelection = new vscode.Selection(anchor, active);
-                    newSelections.push(newSelection);
-                }
-            } else {
-                for (var i = curLine; i <= anchorLine; i++) {
-                    let anchor = doc.validatePosition(new vscode.Position(i, anchorChar));
-                    let active = doc.validatePosition(new vscode.Position(i, anchorChar + this._visaulActionOffset));
-                    let newSelection = new vscode.Selection(anchor, active);
-                    newSelections.push(newSelection);
-                }
-            }
-
-            this._vsTextEditor.selections = newSelections;
-        }
-    }
-
-    onSelectionChange(selections: readonly vscode.Selection[], kind: vscode.TextEditorSelectionChangeKind | undefined) {
-        let selection: vscode.Selection = selections[0];
-
-        if (kind === vscode.TextEditorSelectionChangeKind.Mouse) {
-            let isSelection = selections.some((s) => !s.isEmpty);
-            let oldMode = this.getCurrentModalType();
-            if (!this.isVisual() && isSelection) {
-                this.enterMode(ModalType.visual);
-            } else if (oldMode !== ModalType.normal) {
-                this.enterMode(ModalType.normal);
-            }
-            this._lastSelection = this._vsTextEditor.selection;
-        } else if (!selection.isEqual(this._lastSelection)) {
-            this._onSelectionChange(selections);
-            this._lastSelection = this._vsTextEditor.selection;
-        }
-    }
-
-    _getLineRange(at: vscode.Position | number, after?: boolean) {
+    getLineRange(at: vscode.Position | number, after?: boolean): vscode.Range | undefined {
         let editor = this._vsTextEditor;
         let doc = editor.document;
+
         let lineNumber = typeof at === 'number' ? at : at.line;
-        if (lineNumber >= doc.lineCount)
+        if (lineNumber < 0 || lineNumber >= doc.lineCount)
             return undefined;
 
         let lineRange = doc.lineAt(lineNumber).range;
-        if (after === true && typeof at !== 'number') {
-            return new vscode.Range(at, lineRange.end);
-        } else if (after === false && typeof at !== 'number') {
-            return new vscode.Range(lineRange.start, at);
+
+        if (typeof at !== "number") {
+            if (after) {
+                return new vscode.Range(at, lineRange.end);
+            } else {
+                return new vscode.Range(lineRange.start, at);
+            }
         } else {
             return lineRange;
         }
     }
 
-    _getDocumentRange(at?: vscode.Position, after: boolean = true) {
+    getDocumentRange(at?: vscode.Position, after: boolean = true): vscode.Range {
         let editor = this._vsTextEditor;
         let doc = editor.document;
         if (at && !after) {
@@ -334,36 +458,36 @@ class VSModalEditor extends Editor {
         }
     }
 
-    _getSearchRange(searchRange: SearchRange, searchDirection: SearchDirection, incaludingCursor: boolean = true) {
+    getSearchRange(searchRange: SearchRange, searchDirection: SearchDirection, incaludingCursor: boolean = true): vscode.Range {
         let editor = this._vsTextEditor;
 
         if (searchRange === SearchRange.line) {
             if (searchDirection === SearchDirection.before) {
                 let at = editor.selection.active;
-                return this._getLineRange(at, false);
+                return this.getLineRange(at, false)!;
             } else if (searchDirection === SearchDirection.after) {
                 let at = incaludingCursor ? editor.selection.active : editor.selection.active.translate(0, 1);
-                return this._getLineRange(at, true);
+                return this.getLineRange(at, true)!;
             } else if (searchDirection === SearchDirection.start || searchDirection === SearchDirection.reverse) {
                 let line = editor.selection.active.line;
-                return this._getLineRange(line);
+                return this.getLineRange(line)!;
             } else {
-                return undefined;
+                throw new Error("Invalid search direction");
             }
         } else if (searchRange === SearchRange.document) {
             if (searchDirection === SearchDirection.before) {
                 let at = editor.selection.active;
-                return this._getDocumentRange(at, false);
+                return this.getDocumentRange(at, false);
             } else if (searchDirection === SearchDirection.after) {
                 let at = incaludingCursor ? editor.selection.active : editor.selection.active.translate(0, 1);
-                return this._getDocumentRange(at, true);
+                return this.getDocumentRange(at, true);
             } else if (searchDirection === SearchDirection.start || searchDirection === SearchDirection.reverse) {
-                return this._getDocumentRange();
+                return this.getDocumentRange();
             } else {
-                return undefined;
+                throw new Error("Invalid search direction");
             }
         } else {
-            return undefined;
+            throw new Error("Invalid search range");
         }
     }
 
@@ -380,19 +504,20 @@ class VSModalEditor extends Editor {
 
     nextMatchFromCursor(text: string, line = false) {
         let searchRange = line ? SearchRange.line : SearchRange.document;
-        let range = this._getSearchRange(searchRange, SearchDirection.after, false);
+        let range = this.getSearchRange(searchRange, SearchDirection.after, false);
         if (!range)
             return undefined;
         return this._nextMatch(text, range);
     }
     prevMatchFromCursor(text: string, line = false) {
         let searchRange = line ? SearchRange.line : SearchRange.document;
-        let range = this._getSearchRange(searchRange, SearchDirection.before);
+        let range = this.getSearchRange(searchRange, SearchDirection.before);
         if (!range)
             return undefined;
         return this._nextMatch(text, range, true);
     }
 }
+
 export type {
     CursorStyles
 };
