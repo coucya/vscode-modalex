@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
     resolve: {},
     build: {
-        minify: true,
+        minify: false,
         lib: {
             entry: {
                 "extension": "./src/index.ts"

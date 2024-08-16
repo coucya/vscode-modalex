@@ -165,9 +165,9 @@ class VSVisualModal extends VisualModal {
         super.onDidEnter();
         let editor = this.getEditor() as VSModalEditor;
         if (this._visualType === VisualType.block) {
-            this._updateSelections(editor, this._anchorChar, this._activeChar);
+            this._updateBlockSelections(editor, this._anchorChar, this._activeChar);
         } else if (this._visualType === VisualType.line) {
-            this._updateSelections(editor);
+            this._updateBlockSelections(editor);
         }
     }
 
@@ -175,7 +175,7 @@ class VSVisualModal extends VisualModal {
         await vscode.commands.executeCommand(command, ...args);
     }
 
-    _updateSelections(editor: VSModalEditor, anchorChar?: number, actionChar?: number) {
+    _updateBlockSelections(editor: VSModalEditor, anchorChar?: number, actionChar?: number) {
         let selections: vscode.Selection[] = [];
         if (this._activeLine >= this._anchorLine) {
             for (let i = this._activeLine; i >= this._anchorLine; i--) {
@@ -191,32 +191,65 @@ class VSVisualModal extends VisualModal {
         editor.getVSCodeTextEditor().selections = selections;
     }
 
+    _updateLineSelection(editor: VSModalEditor) {
+        let anchor;
+        let active;
+
+        if (this._anchorLine < this._activeLine) {
+            anchor = editor.getSelectionByLine(this._anchorLine)?.start!;
+            active = editor.getSelectionByLine(this._activeLine)?.end!;
+        } else {
+            anchor = editor.getSelectionByLine(this._anchorLine)?.end!;
+            active = editor.getSelectionByLine(this._activeLine)?.start!;
+        }
+
+        editor.getVSCodeTextEditor().selection = new vscode.Selection(anchor, active);
+    }
+
+    _activeLineDec() {
+        if (this._activeLine > 0)
+            this._activeLine--;
+    }
+    _activeLineInc(editor: VSModalEditor) {
+        let lc = editor.getVSCodeTextEditor().document.lineCount;
+        if (this._activeLine + 1 < lc)
+            this._activeLine++;
+    }
+    _activeCharDec() {
+        if (this._activeChar > 0)
+            this._activeChar--;
+    }
+    _activeCharInc(editor: VSModalEditor) {
+        let lc = editor.getVSCodeTextEditor().document.lineAt(this._activeLine).text.length;
+        if (this._activeChar < lc)
+            this._activeChar++;
+    }
+
     _visualLine_up(editor: VSModalEditor) {
-        this._activeLine--;
-        this._updateSelections(editor);
+        this._activeLineDec();
+        this._updateLineSelection(editor);
     }
 
     _visualLine_down(editor: VSModalEditor) {
-        this._activeLine++;
-        this._updateSelections(editor);
+        this._activeLineInc(editor);
+        this._updateLineSelection(editor);
     }
 
     _visualBlock_up(editor: VSModalEditor) {
-        this._activeLine--;
-        this._updateSelections(editor, this._anchorChar, this._activeChar);
+        this._activeLineDec();
+        this._updateBlockSelections(editor, this._anchorChar, this._activeChar);
     }
     _visualBlock_down(editor: VSModalEditor) {
-        this._activeLine++;
-        this._updateSelections(editor, this._anchorChar, this._activeChar);
+        this._activeLineInc(editor);
+        this._updateBlockSelections(editor, this._anchorChar, this._activeChar);
     }
     _visualBlock_left(editor: VSModalEditor) {
-        this._activeChar--;
-        this._updateSelections(editor, this._anchorChar, this._activeChar);
+        this._activeCharDec();
+        this._updateBlockSelections(editor, this._anchorChar, this._activeChar);
     }
-
     _visualBlock_right(editor: VSModalEditor) {
-        this._activeChar++;
-        this._updateSelections(editor, this._anchorChar, this._activeChar);
+        this._activeCharInc(editor);
+        this._updateBlockSelections(editor, this._anchorChar, this._activeChar);
     }
 
     cursorUp() {
@@ -229,7 +262,10 @@ class VSVisualModal extends VisualModal {
         } else {
             vscode.commands.executeCommand("cursorUpSelect");
         }
-        vsEditor.revealRange(vsEditor.selection);
+
+        let s = vsEditor.selection;
+        let revealSelection = new vscode.Selection(s.active, s.active);
+        vsEditor.revealRange(revealSelection);
     }
     cursorDown() {
         let editor = this.getEditor();
@@ -241,7 +277,10 @@ class VSVisualModal extends VisualModal {
         } else {
             vscode.commands.executeCommand("cursorDownSelect");
         }
-        vsEditor.revealRange(vsEditor.selection);
+
+        let s = vsEditor.selection;
+        let revealSelection = new vscode.Selection(s.active, s.active);
+        vsEditor.revealRange(revealSelection);
     }
     cursorLeft() {
         let editor = this.getEditor();
