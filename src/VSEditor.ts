@@ -360,16 +360,16 @@ class VSModalEditor extends Editor {
             this.getVisualModal().updateKeymap(config.visual);
     }
 
-    visualCursorUp() {
+    cursorUpSelect() {
         this.getVisualModal().cursorUp();
     }
-    visualCursorDown() {
+    cursorDownSelect() {
         this.getVisualModal().cursorDown();
     }
-    visualCursorLeft() {
+    cursorLeftSelect() {
         this.getVisualModal().cursorLeft();
     }
-    visualCursorRight() {
+    cursorRightSelect() {
         this.getVisualModal().cursorRight();
     }
 

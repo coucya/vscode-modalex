@@ -86,30 +86,29 @@ function _transformTo(upper: boolean) {
     }
 }
 
-function _visaulCursorUp() {
+function _cursorUpSelect() {
     let editor = getExtension().getActiveEditor();
     if (!editor)
         return;
-    editor.visualCursorUp();
+    editor.cursorUpSelect();
 }
-
-function _visaulCursorDown() {
+function _cursorDownSelect() {
     let editor = getExtension().getActiveEditor();
     if (!editor)
         return;
-    editor.visualCursorDown();
+    editor.cursorDownSelect();
 }
-function _visaulCursorLeft() {
+function _cursorLeftSelect() {
     let editor = getExtension().getActiveEditor();
     if (!editor)
         return;
-    editor.visualCursorLeft();
+    editor.cursorLeftSelect();
 }
-function _visaulCursorRight() {
+function _cursorRightSelect() {
     let editor = getExtension().getActiveEditor();
     if (!editor)
         return;
-    editor.visualCursorRight();
+    editor.cursorRightSelect();
 }
 
 function registerCommands(context: vscode.ExtensionContext) {
@@ -117,10 +116,10 @@ function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(`${commandPrefix}.paste`, _paste),
         vscode.commands.registerCommand(`${commandPrefix}.transformToUppercase`, () => _transformTo(true)),
         vscode.commands.registerCommand(`${commandPrefix}.transformToLowercase`, () => _transformTo(false)),
-        vscode.commands.registerCommand(`${commandPrefix}.visualCursorUp`, _visaulCursorUp),
-        vscode.commands.registerCommand(`${commandPrefix}.visualCursorDown`, _visaulCursorDown),
-        vscode.commands.registerCommand(`${commandPrefix}.visualCursorLeft`, _visaulCursorLeft),
-        vscode.commands.registerCommand(`${commandPrefix}.visualCursorRight`, _visaulCursorRight)
+        vscode.commands.registerCommand(`${commandPrefix}.cursorUpSelect`, _cursorUpSelect),
+        vscode.commands.registerCommand(`${commandPrefix}.cursorDownSelect`, _cursorDownSelect),
+        vscode.commands.registerCommand(`${commandPrefix}.cursorLeftSelect`, _cursorLeftSelect),
+        vscode.commands.registerCommand(`${commandPrefix}.cursorRightSelect`, _cursorRightSelect)
     );
 }
 
