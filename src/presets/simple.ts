@@ -52,20 +52,20 @@ let normal = {
     V: "modalex.enterVisualLine",
     p: "modalex.action.paste",
     P: "editor.action.clipboardPasteAction",
-    f: "modalex.searchCharLineAfter",
-    F: "modalex.searchCharLineBefore",
-    "/": "modalex.searchAfter",
-    "?": "modalex.searchBefore",
+    f: "modalex.enterSearchCharLineAfter",
+    F: "modalex.enterSearchCharLineBefore",
+    "/": "modalex.enterSearchAfter",
+    "?": "modalex.enterSearchBefore",
     n: "modalex.searchNext",
     N: "modalex.searchPrev",
     u: "undo",
 };
 
 let visual = {
-    h: "cursorLeftSelect",
-    j: "cursorDownSelect",
-    k: "cursorUpSelect",
-    l: "cursorRightSelect",
+    h: "modalex.action.cursorLeftSelect",
+    l: "modalex.action.cursorRightSelect",
+    j: "modalex.action.cursorDownSelect",
+    k: "modalex.action.cursorUpSelect",
     I: "modalex.enterInsert",
     A: "modalex.enterInsertRight",
     w: "cursorWordStartRightSelect",
@@ -91,12 +91,8 @@ let visual = {
         "editor.action.clipboardCutAction",
         "modalex.enterNormal"
     ],
-    t: {
-        "u": "modalex.action.transformToUppercase",
-        "l": "modalex.action.transformToLowercase"
-    },
-    f: "modalex.searchCharLineAfter",
-    F: "modalex.searchCharLineBefore"
+    f: "modalex.enterSearchCharLineAfter",
+    F: "modalex.enterSearchCharLineBefore"
 };
 
 export default {

@@ -1,131 +1,135 @@
 [中文](/README-zh.md)
 
 # Overview
-This is a modal editing extension that works similar to VIM. You can use normal, insert, visual, search modes to edit documents in vscode. It currently provides a simple preset of key bindings that are similar to VIM, called "simple", which is enabled by default. You can change it in the settings.   
-This extension is inspired by [ModalEdit](https://github.com/johtela/vscode-modaledit), but it does not support key bindings in insert mode, nor does it support using a dedicated file to store key bindings. These two are important features for me, so I created this extension.
+ModalEx is an extension that brings modal editing to Visual Studio Code (VSCode), similar to Vim's modal editing. It allows you to use normal, insert, visual, and search modes for editing documents.   
 
-# Settings Options
-ModalEx supports some settings options, which you can find in vscode's settings. They are:
+ModalEx supports keybindings in normal, insert, and visual modes (search mode does not currently support keybindings) and allows you to define custom keybindings in separate files.   
 
- * **preset**: The preset of key bindings that comes with the plugin.   
-     * **none**: Empty, no key bindings.
-     * **simple**: A simple preset that has similar keys to VIM, enabled by default.
- * **customKeymaps**: The path of the custom key binding json file. The format of the json file will be introduced later.
- * **keymaps**: Key binding settings. Here you can override or add some key bindings. The format of the key bindings will be introduced later.
- * **insertCursorStyle, normalCursorStyle, visualCursorStyle, searchCursorStyle**: The cursor style for different modes. You can choose line, block, underline, etc.
- * **insertTimeout**: The timeout for insert mode. After the timeout, the keys that have been pressed will be treated as normal characters and inserted into the document. If it is less than 0, it will never timeout.
+The extension comes with a built-in keybinding preset called "simple," which resembles Vim's keybindings. By default, this preset is enabled, but you can modify it in the settings.   
 
-The key bindings in preset, customKeymaps and keymaps are effective at the same time, but they have different priorities: keymaps > customKeymaps > preset. For the same key or key sequence, if there is a key binding in keymaps, the corresponding operation in keymaps will be used first, and the operations in customKeymaps and preset will not be executed.   
-insertTimeout only works for keys that have been bound in insert mode. Keys that have not been bound will directly input the corresponding characters without delay.
+# Configuration Options
+ModalEx provides several configuration options that you can find in VSCode's settings:
 
-# Setting Key Bindings
-ModalEx supports custom key bindings, which you can find in the vscode settings under the keymaps option, or provide a custom key binding json file.
+1. **Preset**: Choose from the following built-in keybinding presets:
+   - **none**: No keybindings.
+   - **simple**: A simple preset with Vim-like keybindings (enabled by default).
+2. **CustomKeymaps**: Specify the path to a custom keybindings JSON file.
+3. **Keymaps**: Define your own keybindings. You can override or add keybindings here.
+ * **insertCursorStyle, normalCursorStyle, visualCursorStyle, searchCursorStyle**:  Set different cursor styles for each mode (insert, normal, visual, and search).
+5. **InsertTimeout**: Specify the timeout for insert mode. After this timeout, any keys pressed will be treated as regular characters. If the timeout is less than 0, it will wait indefinitely.
+
+Keybindings from preset, customKeymaps, and keymaps will all take effect, with the following priority: keymaps > customKeymaps > preset. If a keybinding exists in keymaps, it will override any corresponding actions in customKeymaps or the preset. The insertTimeout only affects keys that have specific bindings in insert mode; keys without bindings will directly input their corresponding characters without delay.
+
+# Customizing Keybindings
+You can customize keybindings by either modifying the keymaps option in VSCode settings or providing a custom keybindings JSON file. Both formats follow the same structure:
 
 ### Format
-``` jsonc
-// In the vscode settings file:
+```jsonc
+// In VSCode settings:
 {
     ...
     "modalex.keymaps": {
-        "insert": {
-            ...
-        },
-        "normal": {
-            ...
-        },
-        "visual": {
-            ...
-        }
+        "insert": <Keymap>,
+        "normal": <Keymap>,
+        "visual": <Keymap>
     }
     ...
 }
-
-// In the customKeymaps file:
+```
+```jsonc
+// In a customKeymaps file:
 {
-    "insert": {
-        ...
-    },
-    "normal": {
-        ...
-    },
-    "visual": {
-        ...
-    }
+    "insert": <Keymap>,
+    "normal": <Keymap>,
+    "visual": <Keymap>
 }
 ```
-``` jsonc
+```typescript
+type Command = string | { command: string, args?: any };
+type CommandList = Command[];
+type KeymapTarget = { target: string };
+
+type Keymap = {
+    id?: string,
+    help?: string,
+    [key: string]: Command | CommandList | Keymap | KeymapTarget,
+}
+```
+
+### Example
+```jsonc
 "normal": {
-    // Some settings only take effect in normal mode.
-    "a": "<command>",           // Press the a key to execute the <command> command.
-    "b": {                      // Command with arguments.
-        "command": "<command>", // Press the b key to execute the <command> command.
-        "args": "<any>"         // Optional, use arguments when executing the command.
+    // Some settings apply only in normal mode.
+    "a": "<command>",           // Pressing 'a' executes the '<command>' action.
+    "b": {                      // Command with parameters.
+        "command": "<command>", // Pressing 'b' executes the '<command>' action.
+        "args": "<any>"         // Optional argument for the command (can be any JSON value).
     },
-    "c": [                      // Can be an array of command sequences.
-        "<command1>",           // Items in the command sequence can be a string command.
-        {                       // Or a command with arguments.
+    "c": [                      // An array of commands.
+        "<command1>",           // Items in the command sequence can be simple strings.
+        {                       // Or commands with parameters.
             "command": "<command2>", 
-            "args": "<any>"
+            "args": "<any>"     
         }
     ],
-    "d-f": "<command>",         // Press any key between c and f (including c and f) to execute the <command> command.
-    "g,h": "<command>",         // Press g or h to execute the <command> command.
-    "i,j,k-q,r-t": "<command>", // Can be used in combination.
-
-    "u": {                      // Can be nested.
-        "q": "<command>",       // Execute <command> after pressing a followed by q.
-        "a-c": {                // Can continue nesting.
-            "a": "<command>"
-        }
+    "u": {                      // Nesting commands.
+        "q": "<command>",       // After pressing 'a', then 'q', execute '<command>'.
     },
 }
 ```
+
+### Help Field
+The "help" field provides a description and comments for the keymap.
+
+### id and target fields
+TODO
 
 # Commands
 ModalEx provides some control commands and some editing commands.
 
 #### Control commands (can be used in the vscode command palette):
-Source code see /src/commands/base.ts
- * **modalex.enable**: Enable the extension.
- * **modalex.disable**: Disable the extension.
- * **modalex.reload**: Reload the extension, if the customKeymaps file content changes, you can use this command to reload. vscode settings changes will automatically reload, no need to use this command.
+Source code: /src/commands/base.ts   
+ * **modalex.enable**: Enable modal editing functionality.
+ * **modalex.disable**: Disable modal editing functionality.
+ * **modalex.reload**: Reload the extension, useful if the content of the customKeymaps file changes. The extension will automatically reload when vscode settings change, so this command is not necessary.
+ * **modalex.editCustomKeymaps**: Open the custom keymaps file for modification (if custom keymaps are set).
 
-#### Control commands (cannot be used in vscode command palette):
-Source code see /src/commands/base.ts
+#### Control commands (cannot be used in the vscode command palette):
+Source code: /src/commands/base.ts   
  * **modalex.enterNormal**: Enter normal mode.
  * **modalex.enterInsert**: Enter insert mode, with the following parameters:
-      * **right**: Optional, if true, move the cursor one position to the right when entering insert mode, similar to Vim's "a" key
+      * **right**: Optional, if true, moves the cursor one position to the right when entering insert mode, similar to Vim's "a" key
  * **modalex.enterVisual**: Enter visual mode.
- * **modalex.enterVisualLine**: Enter visual mode, but select by line units.
+ * **modalex.enterVisualLine**: Enter visual mode, but select by line.
  * **modalex.enterVisualBlock**: Enter visual mode, but with one cursor per line.
-- **modalex.searchCharLineBefore**: Enter search mode, but with searchRange=line, searchDirection=before, singleChar=true. See [About Search Mode](#About-Search-Mode).
-- **modalex.searchCharLineAfter**: Enter search mode, but with searchRange=line, searchDirection=after, singleChar=true. See [About Search Mode](#About-Search-Mode).
-- **modalex.searchBefore**: Enter search mode, but with searchRange=document, searchDirection=before, singleChar=false. See [About Search Mode](#About-Search-Mode).
-- **modalex.searchAfter**: Enter search mode, but with searchRange=document, searchDirection=after, singleChar=false. See [About Search Mode](#About-Search-Mode).
-- **modalex.searchNext**: Available in any mode, jump to the next match.
-- **modalex.searchPrev**: Available in any mode, jump to the previous match.
+ * **modalex.enterSearchCharLineBefore**: Enter search mode, but with searchRange=line, searchDirection=before, singleChar=true, see [About search mode](#about-search-mode).
+ * **modalex.enterSearchCharLineAfter**: Enter search mode, but with searchRange=line, searchDirection=after, singleChar=true, see [About search mode](#about-search-mode).
+ * **modalex.enterSearchBefore**: Enter search mode, but with searchRange=document, searchDirection=before, singleChar=false, see [About search mode](#about-search-mode).
+ * **modalex.enterSearchAfter**: Enter search mode, but with searchRange=document, searchDirection=after, singleChar=false, see [About search mode](#about-search-mode).
+ * **modalex.searchNext**: Available in any mode, jumps to the next matching position.
+ * **modalex.searchPrev**: Available in any mode, jumps to the previous matching position.
 
-#### Editing Commands
-These commands provide some useful editing functions, see /src/commands/actions.ts
-- **modalex.action.paste**
-- **modalex.action.transformToUppercase**: Transforms the character at the cursor position or the characters in the selection to uppercase.
-- **modalex.action.transformToLowercase**: Transforms the character at the cursor position or the characters in the selection to lowercase.
+#### Editing commands
+These commands provide practical editing features, see /src/commands/actions.ts   
+ * **modalex.action.paste**
+ * **modalex.action.transformToUppercase**: Converts the character at the cursor position or the selected region to uppercase.
+ * **modalex.action.transformToLowercase**: Converts the character at the cursor position or the selected region to lowercase.
 
-## About Search Mode
-Search mode cannot set key bindings. After entering this mode, it records all pressed characters and searches for them after pressing the enter key and moves the cursor to the searched position.
-Search mode executes different strategies according to the parameters when entering this mode. There are the following parameters:
-- **searchRange**: Search range.
-    - **line**: Only search within the line where the cursor is located.
-    - **document**: Search within the entire document.
-- **searchDirection**: Search direction.
-    - **before**: Search from the cursor position to the beginning of the file or line.
-    - **after**: Search from the cursor position to the end of the file or line.
-    - **start**: Search from the beginning of the line or document to the end of the line or document.
-    - **reverse**: Search from the end of the line or document to the beginning of the line or document.
-- **singleChar**: If true, only search for a single character, without pressing enter.
+## About search mode
+Search mode does not allow key bindings. When entering this mode, all pressed characters are recorded, and the cursor is moved to the search result upon pressing the Enter key.   
+Search mode executes different strategies based on the parameters when entering this mode, with the following parameters:
+ * **searchRange**: Search range.
+     * **line**: Searches only within the line where the cursor is located.
+     * **document**: Searches throughout the entire document.
+ * **searchDirection**: Search direction.
+     * **before**: Searches from the cursor's position to the beginning of the file or line.
+     * **after**: Searches from the cursor's position to the end of the file or line.
+     * **start**: Searches from the beginning of the line or document to the end.
+     * **reverse**: Searches from the end of the line or document to the beginning.
+ * **singleChar**: If true, searches for a single character, jumping to the target position after pressing a character without needing to press Enter.
 
-## About Visual Mode
-Visual mode can be used to select text and perform some editing operations.
+## About visual mode
+TODO
 
 # LICENSE
 MIT

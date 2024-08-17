@@ -37,7 +37,7 @@ function _enterVisualBlock() {
     }
 }
 
-function _searchCharLineBefore() {
+function _enterSearchCharLineBefore() {
     let ext = getExtension();
     let editor = ext.getActiveEditor();
     if (editor) {
@@ -48,7 +48,7 @@ function _searchCharLineBefore() {
         });
     }
 }
-function _searchCharLineAfter() {
+function _enterSearchCharLineAfter() {
     let ext = getExtension();
     let editor = ext.getActiveEditor();
     if (editor) {
@@ -60,7 +60,7 @@ function _searchCharLineAfter() {
     }
 }
 
-function _searchBefore() {
+function _enterSearchBefore() {
     let ext = getExtension();
     let editor = ext.getActiveEditor();
     if (editor) {
@@ -71,7 +71,7 @@ function _searchBefore() {
         });
     }
 }
-function _searchAfter() {
+function _enterSearchAfter() {
     let ext = getExtension();
     let editor = ext.getActiveEditor();
     if (editor) {
@@ -147,10 +147,10 @@ function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(`${extensionName}.enterVisual`, _enterVisual),
         vscode.commands.registerCommand(`${extensionName}.enterVisualLine`, _enterVisualLine),
         vscode.commands.registerCommand(`${extensionName}.enterVisualBlock`, _enterVisualBlock),
-        vscode.commands.registerCommand(`${extensionName}.searchCharLineBefore`, _searchCharLineBefore),
-        vscode.commands.registerCommand(`${extensionName}.searchCharLineAfter`, _searchCharLineAfter),
-        vscode.commands.registerCommand(`${extensionName}.searchBefore`, _searchBefore),
-        vscode.commands.registerCommand(`${extensionName}.searchAfter`, _searchAfter),
+        vscode.commands.registerCommand(`${extensionName}.enterSearchCharLineBefore`, _enterSearchCharLineBefore),
+        vscode.commands.registerCommand(`${extensionName}.enterSearchCharLineAfter`, _enterSearchCharLineAfter),
+        vscode.commands.registerCommand(`${extensionName}.enterSearchBefore`, _enterSearchBefore),
+        vscode.commands.registerCommand(`${extensionName}.enterSearchAfter`, _enterSearchAfter),
         vscode.commands.registerCommand(`${extensionName}.searchNext`, _searchNext),
         vscode.commands.registerCommand(`${extensionName}.searchPrev`, _searchPrev),
         vscode.commands.registerCommand(`${extensionName}.editCustomKeymaps`, _editCustomKeymaps),
