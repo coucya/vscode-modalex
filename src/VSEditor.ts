@@ -115,25 +115,15 @@ class VSSearchModal extends SearchModal {
 
     override onConfirm(): void | Thenable<void> {
         let editor = this.getEditor() as VSModalEditor;
-        let dir = this.getSearchDirection();
 
-        let nextCursor: vscode.Position | undefined;
-        if (dir === SearchDirection.after) {
-            nextCursor = editor.nextMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
-            if (this._oldModalType === ModalType.visual)
-                nextCursor = nextCursor?.translate(0, 1);
-        } else if (dir === SearchDirection.before) {
-            nextCursor = editor.prevMatchFromCursor(this.getText(), this.getSearchRange() === SearchRange.line);
-        } else {
-            throw new Error(`implementation of SearchDirection(${dir}) has not been completed yet`);
-            // TODO
-        }
-        setTimeout(() => {
+        let dir = this.getSearchDirection();
+        let range = this.getSearchRange();
+        let text = this.getText();
+
+        let activeOnly = this._oldModalType === ModalType.visual;
+        editor.searchNextAndSelect(text, range, dir, activeOnly, () => {
             editor.enterMode(this._oldModalType);
-            if (nextCursor) {
-                editor.getVSCodeTextEditor().selection = new vscode.Selection(nextCursor, nextCursor);
-            }
-        }, 0);
+        });
     }
 }
 
@@ -490,28 +480,32 @@ class VSModalEditor extends Editor {
         }
     }
 
-    getSearchRange(searchRange: SearchRange, searchDirection: SearchDirection, incaludingCursor: boolean = true): vscode.Range {
+    getSearchRange(
+        searchRange: SearchRange,
+        searchDirection: SearchDirection,
+        at?: vscode.Position,
+        includeCursor: boolean = true
+    ): vscode.Range {
         let editor = this._vsTextEditor;
+
+        at = at ?? editor.selection.active;
 
         if (searchRange === SearchRange.line) {
             if (searchDirection === SearchDirection.before) {
-                let at = editor.selection.active;
                 return this.getLineRange(at, false)!;
             } else if (searchDirection === SearchDirection.after) {
-                let at = incaludingCursor ? editor.selection.active : editor.selection.active.translate(0, 1);
+                at = includeCursor ? at : at.translate(0, 1);
                 return this.getLineRange(at, true)!;
             } else if (searchDirection === SearchDirection.start || searchDirection === SearchDirection.reverse) {
-                let line = editor.selection.active.line;
-                return this.getLineRange(line)!;
+                return this.getLineRange(at.line)!;
             } else {
                 throw new Error("Invalid search direction");
             }
         } else if (searchRange === SearchRange.document) {
             if (searchDirection === SearchDirection.before) {
-                let at = editor.selection.active;
                 return this.getDocumentRange(at, false);
             } else if (searchDirection === SearchDirection.after) {
-                let at = incaludingCursor ? editor.selection.active : editor.selection.active.translate(0, 1);
+                at = includeCursor ? at : at.translate(0, 1);
                 return this.getDocumentRange(at, true);
             } else if (searchDirection === SearchDirection.start || searchDirection === SearchDirection.reverse) {
                 return this.getDocumentRange();
@@ -523,7 +517,7 @@ class VSModalEditor extends Editor {
         }
     }
 
-    _nextMatch(text: string, range: vscode.Range, reverse: boolean = false) {
+    searchText(text: string, range: vscode.Range, reverse?: boolean): vscode.Position | undefined {
         let doc = this._vsTextEditor.document;
         let searchRange = doc.validateRange(range);
         let docText = doc.getText(searchRange);
@@ -534,20 +528,58 @@ class VSModalEditor extends Editor {
         return doc.positionAt(matchPos);
     }
 
-    nextMatchFromCursor(text: string, line = false) {
-        let searchRange = line ? SearchRange.line : SearchRange.document;
-        let range = this.getSearchRange(searchRange, SearchDirection.after, false);
-        if (!range)
-            return undefined;
-        return this._nextMatch(text, range);
+    searchNextAndSelect(
+        text: string,
+        range: SearchRange,
+        dir: SearchDirection,
+        activeOnly?: boolean,
+        cb?: (selections: vscode.Selection[]) => any
+    ) {
+        let searchModal = this.getSearchModal();
+        let vsEditor = this.getVSCodeTextEditor();
+
+        let selections = vsEditor.selections;
+
+        let newSelections: vscode.Selection[] = [];
+
+        let reverse = dir === SearchDirection.before || dir === SearchDirection.reverse;
+
+        if (activeOnly) {
+            for (let selection of selections) {
+                let searchRange = this.getSearchRange(range, dir, selection.active, false);
+                let pos = this.searchText(text, searchRange, reverse);
+
+                let newSelection: vscode.Selection;
+                if (pos) {
+                    pos = reverse ? pos : pos.translate(0, 1);
+                    newSelection = new vscode.Selection(selection.anchor, pos);
+                } else {
+                    newSelection = selection;
+                }
+
+                newSelections.push(newSelection);
+            }
+        } else {
+            for (let selection of selections) {
+                let searchRange = this.getSearchRange(range, dir, selection.active, false);
+                let pos = this.searchText(text, searchRange, reverse);
+
+                let newSelection: vscode.Selection;
+                if (pos)
+                    newSelection = new vscode.Selection(pos, pos);
+                else
+                    newSelection = selection;
+
+                newSelections.push(newSelection);
+            }
+        }
+
+        setTimeout(() => {
+            this.getVSCodeTextEditor().selections = newSelections;
+            cb && cb(newSelections);
+        }, 0);
     }
-    prevMatchFromCursor(text: string, line = false) {
-        let searchRange = line ? SearchRange.line : SearchRange.document;
-        let range = this.getSearchRange(searchRange, SearchDirection.before);
-        if (!range)
-            return undefined;
-        return this._nextMatch(text, range, true);
-    }
+
 }
 
 export type {

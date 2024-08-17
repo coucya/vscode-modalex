@@ -93,12 +93,11 @@ function _searchNext() {
     if (!text || text === "")
         return;
 
-    let nextPos = editor.nextMatchFromCursor(text);
-    if (!nextPos)
-        return;
-    let vsEditor = editor.getVSCodeTextEditor();
-    vsEditor.selection = new vscode.Selection(nextPos, nextPos);
-    vsEditor.revealRange(vsEditor.selection);
+    editor.searchNextAndSelect(text, SearchRange.document, SearchDirection.after, false, (selections) => {
+        let nextPos = selections[0].active;
+        let selection = new vscode.Selection(nextPos, nextPos);
+        editor.getVSCodeTextEditor().revealRange(selection);
+    });
 }
 function _searchPrev() {
     let ext = getExtension();
@@ -110,12 +109,11 @@ function _searchPrev() {
     if (!text || text === "")
         return;
 
-    let nextPos = editor.prevMatchFromCursor(text);
-    if (!nextPos)
-        return;
-    let vsEditor = editor.getVSCodeTextEditor();
-    vsEditor.selection = new vscode.Selection(nextPos, nextPos);
-    vsEditor.revealRange(vsEditor.selection);
+    editor.searchNextAndSelect(text, SearchRange.document, SearchDirection.before, false, (selections) => {
+        let nextPos = selections[0].active;
+        let selection = new vscode.Selection(nextPos, nextPos);
+        editor.getVSCodeTextEditor().revealRange(selection);
+    });
 }
 
 function openLocalFile(filePath: string) {
