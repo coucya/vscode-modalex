@@ -155,9 +155,9 @@ ModalEx 支持多种键位绑定方式，主要包括以下几种类型：
     // 嵌套键位映射：组合键的使用
     "d": {
         "d": "modalex.action.deleteAndYankLine",    // 按下 d 键后再按 d 键，删除当前整行
-        "w": "deleteWordRight"                      // 按下 d 键后再按 w 键，删除单词
+        "w": "deleteWordRight",                     // 按下 d 键后再按 w 键，删除单词
         "x": {
-            ...                                     // 同理，可以继续嵌套
+            // ...                                  // 同理，可以继续嵌套
         }
     },
     

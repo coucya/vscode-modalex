@@ -154,9 +154,9 @@ The following is a key binding configuration example in Normal mode, showing the
     // Nested key mapping: use of combination keys
     "d": {
         "d": "modalex.action.deleteAndYankLine",    // Press d key then d key to delete current entire line
-        "w": "deleteWordRight"                      // Press d key then w key to delete word
+        "w": "deleteWordRight",                     // Press d key then w key to delete word
         "x": {
-            ...                                     // Similarly, can continue nesting
+            // ...                                  // Similarly, can continue nesting
         }
     },
     
