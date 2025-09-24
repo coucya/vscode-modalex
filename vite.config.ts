@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig({
     resolve: {},
@@ -6,23 +7,20 @@ export default defineConfig({
         minify: false,
         lib: {
             entry: {
-                "extension": "./src/index.ts"
+                extension: resolve(__dirname, 'src/index.ts')
             },
             formats: ["cjs"],
+            fileName: 'extension',
         },
         sourcemap: true,
         rollupOptions: {
-            input: {
-                "extension": "./src/index.ts"
-            },
+            external: ['vscode', 'events'],
             output: {
                 dir: 'dist',
-                entryFileNames: "[name].js"
-            },
-            external: [
-                "vscode",
-                "events"
-            ]
+                entryFileNames: '[name].js',
+                format: 'cjs',
+                exports: 'named'
+            }
         },
     },
 });

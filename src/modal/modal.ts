@@ -71,21 +71,10 @@ class KeymapModal extends BaseModal {
 
     private _timeoutHandle: NodeJS.Timeout | null = null;
 
-    // _onTimeout: ((modal: KeymapModal) => void | Thenable<void>) | null;
-    // _onDefault: ((modal: KeymapModal) => void | Thenable<void>) | null;
-
-    // _onExecCommand: ((modal: KeymapModal, command: string, args: any) => void | Thenable<void>) | null;
-
     constructor(name: string, editor: Editor, options?: {
         timeout?: number,
-        // onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
-        // onDefault?: (modal: KeymapModal) => void | Thenable<void>,
-        // onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
     }) {
         super(name, editor, options);
-        // this._onTimeout = options?.onTimeout ?? null;
-        // this._onDefault = options?.onDefault ?? null;
-        // this._onExecCommand = options?.onExecCommand ?? null;
 
         this._rootKeymap = new Keymap();
 
@@ -167,9 +156,6 @@ class VisualModal extends KeymapModal {
 
     constructor(name: string, editor: Editor, options?: {
         timeout?: number,
-        // onTimeout?: (modal: KeymapModal) => void | Thenable<void>,
-        // onDefault?: (modal: KeymapModal) => void | Thenable<void>,
-        // onExecCommand?: (modal: KeymapModal, command: string, args: any) => void | Thenable<void>,
     }) {
         super(name, editor, options);
         this._visualType = VisualType.normal;

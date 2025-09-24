@@ -320,12 +320,14 @@
     "scripts": {
         "package": "tsc & vite build & vsce package --no-dependencies",
         "publish": "vsce publish --no-dependencies",
-        "build": "tsc & vite build"
+        "build": "tsc & vite build",
+        "watch": "vite build -w"
     },
+    "dependencies": {},
     "devDependencies": {
-        "@types/node": "^20.14.15",
-        "@types/vscode": "^1.80.0",
-        "typescript": "^5.5.4",
-        "vite": "^5.4.0"
+        "@types/node": "^20.19.17",
+        "@types/vscode": "^1.104.0",
+        "typescript": "^5.9.2",
+        "vite": "^5.4.20"
     }
 }
