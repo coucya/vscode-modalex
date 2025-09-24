@@ -119,7 +119,7 @@ function loadPresetKeymaps(preset: string) {
     }
 }
 
-async function vsconfigAsExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtConfig> {
+async function vsConfigAsExtConfig(config: vscode.WorkspaceConfiguration): Promise<ExtConfig> {
     try {
         let preset = config.get<string>("preset") ?? "none";
         let insertTimeout = config.get<number>("insertTimeout") ?? null;
@@ -138,8 +138,32 @@ async function vsconfigAsExtConfig(config: vscode.WorkspaceConfiguration): Promi
         let insertKeymap = parseKeymapConfigObject(insertKeymapObj);
         let visualKeymap = parseKeymapConfigObject(visualKeymapObj);
 
-        let presetKeymaps = loadPresetKeymaps(preset);
-        let customKeymaps = customKeymapsPath ? await loadCustomKeymaps(customKeymapsPath) : null;
+        let presetKeymaps = null;
+        let customKeymaps = null;
+
+        try {
+            presetKeymaps = loadPresetKeymaps(preset);
+        } catch (e) {
+            if (e instanceof ExtensionError) {
+                logError(e.message);
+                notifyError(e.message);
+            } else {
+                logError(`unknown error when processing preset`);
+                notifyError(`unknown error when processing preset`);
+            }
+        }
+
+        try {
+            customKeymaps = customKeymapsPath ? await loadCustomKeymaps(customKeymapsPath) : null;
+        } catch (e) {
+            if (e instanceof ExtensionError) {
+                logError(e.message);
+                notifyError(e.message);
+            } else {
+                logError(`unknown error when processing custom keymap`);
+                notifyError(`unknown error when processing custom keymap`);
+            }
+        }
 
         let cursorStyles: CursorStyles = {
             [ModalType.normal]: toVSCodeCursorStyle(normalCursorStyle),
@@ -331,7 +355,7 @@ class Extension extends EventEmitter {
 
     async _updateConfig(): Promise<ExtConfig> {
         let vsConfig = vscode.workspace.getConfiguration(extensionName);
-        this._config = await vsconfigAsExtConfig(vsConfig);
+        this._config = await vsConfigAsExtConfig(vsConfig);
         return this._config;
     }
 
