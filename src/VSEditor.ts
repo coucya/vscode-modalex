@@ -128,8 +128,6 @@ class VSSearchModal extends SearchModal {
 }
 
 class VSVisualModal extends VisualModal {
-    private _initialSelection: vscode.Selection | undefined;
-
     constructor(editor: Editor) {
         super("visual", editor);
     }

@@ -24,34 +24,21 @@ let normal = {
         "modalex.enterInsert"
     ],
     d: {
-        d: [
-            {
-                "command": "cursorMove",
-                "args": {
-                    "to": "wrappedLine"
-                }
-            },
-            "editor.action.clipboardCutAction"
-        ],
+        d: "modalex.action.deleteAndYankLine",
         b: "deleteWordLeft",
         e: "deleteWordRight",
         w: "deleteWordRight"
     },
     y: {
-        y: [
-            {
-                "command": "cursorMove",
-                "args": {
-                    "to": "wrappedLine"
-                }
-            },
-            "editor.action.clipboardCopyAction"
-        ]
+        y: "modalex.action.yankLine",
+    },
+    p: "modalex.action.paste",
+    P: {
+        "command": "modalex.action.paste",
+        "args": { "before": true }
     },
     v: "modalex.enterVisual",
     V: "modalex.enterVisualLine",
-    p: "modalex.action.paste",
-    P: "editor.action.clipboardPasteAction",
     f: "modalex.enterSearchCharLineAfter",
     F: "modalex.enterSearchCharLineBefore",
     "/": "modalex.enterSearchAfter",
