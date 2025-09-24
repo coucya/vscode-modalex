@@ -29,7 +29,7 @@ async function _yankLine() {
     await vscode.env.clipboard.writeText(text);
 }
 
-async function _deleteAndYankLine() {
+async function _cutLine() {
     let editor = vscode.window.activeTextEditor;
     if (!editor)
         return;
@@ -45,6 +45,22 @@ async function _deleteAndYankLine() {
         }),
         vscode.env.clipboard.writeText(text)
     ]);
+}
+
+async function _yank() {
+    let editor = vscode.window.activeTextEditor;
+    if (!editor)
+        return;
+
+    vscode.commands.executeCommand("editor.action.clipboardCopyAction")
+}
+
+async function _cut() {
+    let editor = vscode.window.activeTextEditor;
+    if (!editor)
+        return;
+
+    vscode.commands.executeCommand("editor.action.clipboardCutAction")
 }
 
 async function _paste(args?: { before?: boolean; enterNormal?: boolean; }) {
@@ -173,9 +189,11 @@ function _cursorRightSelect() {
 
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
-        vscode.commands.registerCommand(`${commandPrefix}.paste`, _paste),
+        vscode.commands.registerCommand(`${commandPrefix}.yank`, _yank),
+        vscode.commands.registerCommand(`${commandPrefix}.cut`, _cut),
         vscode.commands.registerCommand(`${commandPrefix}.yankLine`, _yankLine),
-        vscode.commands.registerCommand(`${commandPrefix}.deleteAndYankLine`, _deleteAndYankLine),
+        vscode.commands.registerCommand(`${commandPrefix}.cutLine`, _cutLine),
+        vscode.commands.registerCommand(`${commandPrefix}.paste`, _paste),
         vscode.commands.registerCommand(`${commandPrefix}.transformToUppercase`, () => _transformTo(true)),
         vscode.commands.registerCommand(`${commandPrefix}.transformToLowercase`, () => _transformTo(false)),
         vscode.commands.registerCommand(`${commandPrefix}.cursorUpSelect`, _cursorUpSelect),

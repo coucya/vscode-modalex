@@ -79,7 +79,11 @@ let visual = {
         "modalex.enterNormal"
     ],
     f: "modalex.enterSearchCharLineAfter",
-    F: "modalex.enterSearchCharLineBefore"
+    F: "modalex.enterSearchCharLineBefore",
+    s: [
+        "editor.action.clipboardCutAction",
+        "modalex.enterInsert"
+    ]
 };
 
 export default {
