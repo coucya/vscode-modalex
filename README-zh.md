@@ -21,67 +21,90 @@ preset、customKeymaps 和 keymaps 中的键绑定配置将同时生效，但配
 insertTimeout 配置仅对 insert 模态下已定义键绑定的按键序列有效。对于未进行键绑定的按键，系统将直接将其作为普通字符插入文档，不存在任何延迟机制。
 
 # 设置键绑定
-ModalEx支持自定义键绑定，你可以在vscode的设置中找到keymaps选项，或者提供一个自定义的键绑定json文件。它们都使用相同的格式。
+ModalEx 支持通过两种方式自定义键绑定：
+1. 在 VSCode 设置中直接配置 `modalex.keymaps` 选项
+2. 提供一个单独的 JSON 文件作为自定义键绑定配置
 
-### 格式
+两种方式使用相同的配置格式，均支持为 insert、normal 和 visual 三种模态定义不同的键绑定。
+
+### 配置格式
+键绑定配置采用 JSON 格式，主要包含以下几种数据类型：
+
+#### 基本命令格式
 ``` jsonc
-// 在 vscode 设置文件里：
+// 在 VSCode 设置文件中：
 {
-    ...
     "modalex.keymaps": {
-        "insert": <Keymap>,
-        "normal": <Keymap>,
-        "visual": <Keymap>
+        "insert": { /* insert 模态下的键绑定 */ },
+        "normal": { /* normal 模态下的键绑定 */ },
+        "visual": { /* visual 模态下的键绑定 */ }
     }
-    ...
 }
 ```
+
 ``` jsonc
-// 在 customKeymaps 文件里：
+// 在单独的自定义键绑定文件中：
 {
-    "insert": <Keymap>,
-    "normal": <Keymap>,
-    "visual": <Keymap>
-}
-```
-``` typescript
-type Command = string | { command: string, args?: any };
-type CommandList = Command[];
-type KeymapTarget = { target: string };
-
-type Keymap = {
-    id?: string,
-    help?: string,
-    [key: string]: Command | CommandList | Keymap | KeymapTarget,
+    "insert": { /* insert 模态下的键绑定 */ },
+    "normal": { /* normal 模态下的键绑定 */ },
+    "visual": { /* visual 模态下的键绑定 */ }
 }
 ```
 
-### 例子
+### 配置示例
+ModalEx支持多种键绑定方式，以下是几种主要的键绑定方式：
+
+1. **单键绑定**：将单个按键直接映射到VSCode命令。
+3. **命令序列**：将多个命令组合在一起，按顺序执行。
+4. **组合键**：通过按键组合实现更丰富的功能，如dd组合键删除当前行
+
+以下是一个 normal 模态下的键绑定配置示例，展示了上述几种绑定方式的使用：
+
 ``` jsonc
 "normal": {
-    // 一些设置仅在 normal 模态下生效。
-    "a": "<command>",           // 按下 a 键，执行 <command> 命令。
-    "b": {                      // 带参数的命令。
-        "command": "<command>", // 按下 b 键，执行 <command> 命令。
-        "args": "<any>"         // 可选，执行命令时使用参数，可以是任何 json 值。
+    // 基本命令绑定：单个键绑定到单个命令
+    "c": "editor.action.clipboardCopyAction",  // 按下 c 键，复制选中的文本或当前行
+    "x": "editor.action.clipboardCutAction",  // 按下 x 键，剪切选中的文本或当前行
+    "v": "editor.action.clipboardPasteAction",  // 按下 v 键，粘贴剪贴板内容
+    
+    // 带参数的命令绑定：单个键绑定到带参数的命令
+    "s": { 
+        "command": "workbench.action.files.save",  // 按下 s 键，保存当前文件
+        "args": { 
+            "includeUntitled": true  // 保存未命名文件
+        }
     },
-    "c": [                      // 可以是一个数组组成的命令序列，命令序列依次执行。
-        "<command1>",           // 命令序列里的项可以是一个字符串命令。
-        {                       // 也可以是带参数的命令。
-            "command": "<command2>",
-            "args": "<any>"
+    
+    // 命令序列：单个键绑定到多个命令，按顺序执行
+    "f": [
+        "editor.action.formatDocument",  // 首先格式化当前文档
+        { 
+            "command": "workbench.action.files.save",  // 然后保存文件
+            "args": { 
+                "includeUntitled": true
+            }
         }
     ],
-    "u": {                      // 可以嵌套使用。
-        "q": "<command>",       // 当按下 a 后再按下 q 后执行 <command>。
+    
+    // 嵌套键映射：组合键的使用
+    "d": {
+        "d": "editor.action.deleteLines",  // 按下 d 键后再按 d 键，删除当前行
+        "y": "editor.action.copyLinesDownAction"  // 按下 d 键后再按 y 键，向下复制当前行
     },
 }
 ```
-### help 字段
-help 字段用于描述和注释这个 Keymap。
 
-### id 与 target 字段
-TODO
+带参数的命令绑定和嵌套键映射不能同时存在，如下的方式是无效的。
+``` jsonc
+"normal": {
+    "d": {
+        "command": "editor.action.deleteLines",
+        "args": { "lines": 2 },
+        "d": "editor.action.deleteLines",
+        "y": "editor.action.copyLinesDownAction"
+    }
+}
+```
 
 
 # 模态
