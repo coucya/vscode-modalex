@@ -1,4 +1,4 @@
-[English](/README.md) - 这应该保留，因为它已经是英文
+[中文](/README-zh.md)
 
 # Overview
 ModalEx is a Visual Studio Code extension based on modal editing concept, designed with inspiration from the Vim editor. This extension provides four editing modes for VSCode: Normal, Insert, Visual, and Search.
