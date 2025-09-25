@@ -61,6 +61,69 @@ ModalEx 支持通过以下两种方式自定义键位绑定：
 }
 ```
 
+## 配置示例
+
+ModalEx 支持多种键位绑定方式，主要包括以下几种类型：
+
+1. **单键绑定**：将单个按键直接映射到 VSCode 命令
+2. **命令序列**：将多个命令组合在一起，按顺序执行
+3. **组合键**：通过按键组合实现更丰富的功能，例如使用 "yy" 组合键复制当前行
+
+以下是一个 Normal 模式下的键位绑定配置示例，展示了上述几种绑定方式的具体应用：
+
+```jsonc
+"normal": {
+    // 基本命令绑定：单个键位绑定到单个 ModalEx 命令
+    "y": "modalex.action.yank",           // 按下 y 键，复制选中的文本
+    "x": "modalex.action.cut",            // 按下 x 键，剪切选中的文本
+    "p": "modalex.action.paste",          // 按下 p 键，粘贴剪贴板内容
+    
+    // 带参数的命令绑定：单个键位绑定到带参数的 ModalEx 命令
+    "P": {
+        "command": "modalex.action.paste",  // 按下 P 键，在光标前粘贴剪贴板内容
+        "args": {
+            "before": true                  // 在光标位置前粘贴
+        }
+    },
+    
+    // 命令序列：单个键位绑定到多个 ModalEx 命令，按顺序执行
+    "o": [
+        "editor.action.insertLineAfter",     // 按下 o 键，在光标所在行下方插入新行
+        "modalex.enterInsert"                // 进入 Insert 模式
+    ],
+    
+    // 嵌套键位映射：组合键的使用
+    "d": {
+        "d": "modalex.action.deleteAndYankLine",    // 按下 d 键后再按 d 键，删除当前整行
+        "w": "deleteWordRight",                     // 按下 d 键后再按 w 键，删除单词
+        "x": {
+            // ...                                  // 同理，可以继续嵌套
+        }
+    },
+    
+    // 模式切换命令
+    "i": "modalex.enterInsert",               // 按下 i 键，进入 Insert 模式
+    "a": "modalex.enterInsertRight",          // 按下 a 键，进入 Insert 模式并将光标右移
+    "v": "modalex.enterVisual",               // 按下 v 键，进入 Visual 模式
+    "V": "modalex.enterVisualLine"            // 按下 V 键，进入 Visual Line 模式
+}
+```
+
+**注意**：带参数的命令绑定和嵌套键位映射不能同时存在，以下配置方式无效：
+
+```jsonc
+"normal": {
+    "d": {
+        "command": "editor.action.deleteLines",
+        "args": { "lines": 2 },
+        "d": "editor.action.deleteLines",
+        "y": "editor.action.copyLinesDownAction"
+    }
+}
+```
+
+# 预设
+
 ## `Simple` 预设键位配置
 
 ModalEx 内置的 "simple" 预设提供了一套类似 Vim 的基础键位配置，默认启用。该预设定义了以下主要键位绑定：
@@ -121,66 +184,6 @@ ModalEx 内置的 "simple" 预设提供了一套类似 Vim 的基础键位配置
 ### Insert 模式
 Simple 预设中 Insert 模式键位为空，用户可通过自定义配置设置返回 Normal 模式的按键。
 
-## 配置示例
-
-ModalEx 支持多种键位绑定方式，主要包括以下几种类型：
-
-1. **单键绑定**：将单个按键直接映射到 ModalEx 命令
-2. **命令序列**：将多个命令组合在一起，按顺序执行
-3. **组合键**：通过按键组合实现更丰富的功能，例如使用 "yy" 组合键复制当前行
-
-以下是一个 Normal 模式下的键位绑定配置示例，展示了上述几种绑定方式的具体应用：
-
-```jsonc
-"normal": {
-    // 基本命令绑定：单个键位绑定到单个 ModalEx 命令
-    "y": "modalex.action.yank",           // 按下 y 键，复制选中的文本
-    "x": "modalex.action.cut",            // 按下 x 键，剪切选中的文本
-    "p": "modalex.action.paste",          // 按下 p 键，粘贴剪贴板内容
-    
-    // 带参数的命令绑定：单个键位绑定到带参数的 ModalEx 命令
-    "P": {
-        "command": "modalex.action.paste",  // 按下 P 键，在光标前粘贴剪贴板内容
-        "args": {
-            "before": true                  // 在光标位置前粘贴
-        }
-    },
-    
-    // 命令序列：单个键位绑定到多个 ModalEx 命令，按顺序执行
-    "o": [
-        "editor.action.insertLineAfter",     // 按下 o 键，在光标所在行下方插入新行
-        "modalex.enterInsert"                // 进入 Insert 模式
-    ],
-    
-    // 嵌套键位映射：组合键的使用
-    "d": {
-        "d": "modalex.action.deleteAndYankLine",    // 按下 d 键后再按 d 键，删除当前整行
-        "w": "deleteWordRight",                     // 按下 d 键后再按 w 键，删除单词
-        "x": {
-            // ...                                  // 同理，可以继续嵌套
-        }
-    },
-    
-    // 模式切换命令
-    "i": "modalex.enterInsert",               // 按下 i 键，进入 Insert 模式
-    "a": "modalex.enterInsertRight",          // 按下 a 键，进入 Insert 模式并将光标右移
-    "v": "modalex.enterVisual",               // 按下 v 键，进入 Visual 模式
-    "V": "modalex.enterVisualLine"            // 按下 V 键，进入 Visual Line 模式
-}
-```
-
-**注意**：带参数的命令绑定和嵌套键位映射不能同时存在，以下配置方式无效：
-
-```jsonc
-"normal": {
-    "d": {
-        "command": "editor.action.deleteLines",
-        "args": { "lines": 2 },
-        "d": "editor.action.deleteLines",
-        "y": "editor.action.copyLinesDownAction"
-    }
-}
-```
 
 # 模式说明
 

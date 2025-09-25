@@ -60,6 +60,69 @@ Key binding configuration uses JSON format and supports the following data struc
 }
 ```
 
+## Configuration Examples
+
+ModalEx supports various key binding methods, mainly including the following types:
+
+1. **Single Key Binding**: Directly map a single key to a VSCode command
+2. **Command Sequence**: Combine multiple commands together and execute them in sequence
+3. **Combination Keys**: Implement richer functionality through key combinations, such as using "yy" combination key to copy current line
+
+The following is a key binding configuration example in Normal mode, showing the specific application of the above binding methods:
+
+```jsonc
+"normal": {
+    // Basic command binding: single key bound to a single ModalEx command
+    "y": "modalex.action.yank",           // Press y key to copy selected text
+    "x": "modalex.action.cut",            // Press x key to cut selected text
+    "p": "modalex.action.paste",          // Press p key to paste clipboard content
+    
+    // Command with parameters: single key bound to a ModalEx command with parameters
+    "P": {
+        "command": "modalex.action.paste",  // Press P key to paste clipboard content before cursor
+        "args": {
+            "before": true                  // Paste before cursor position
+        }
+    },
+    
+    // Command sequence: single key bound to multiple ModalEx commands, executed in sequence
+    "o": [
+        "editor.action.insertLineAfter",     // Press o key to insert new line below cursor's current line
+        "modalex.enterInsert"                // Enter Insert mode
+    ],
+    
+    // Nested key mapping: use of combination keys
+    "d": {
+        "d": "modalex.action.deleteAndYankLine",    // Press d key then d key to delete current entire line
+        "w": "deleteWordRight",                     // Press d key then w key to delete word
+        "x": {
+            // ...                                  // Similarly, can continue nesting
+        }
+    },
+    
+    // Mode switching commands
+    "i": "modalex.enterInsert",               // Press i key to enter Insert mode
+    "a": "modalex.enterInsertRight",          // Press a key to enter Insert mode and move cursor right
+    "v": "modalex.enterVisual",               // Press v key to enter Visual mode
+    "V": "modalex.enterVisualLine"            // Press V key to enter Visual Line mode
+}
+```
+
+**Note**: Commands with parameters and nested key mappings cannot exist at the same time, the following configuration method is invalid:
+
+```jsonc
+"normal": {
+    "d": {
+        "command": "editor.action.deleteLines",
+        "args": { "lines": 2 },
+        "d": "editor.action.deleteLines",
+        "y": "editor.action.copyLinesDownAction"
+    }
+}
+```
+
+# Preset
+
 ## `Simple` Preset Key Configuration
 
 The built-in "simple" preset in ModalEx provides a basic Vim-like key configuration, enabled by default. This preset defines the following main key bindings:
@@ -120,66 +183,7 @@ The built-in "simple" preset in ModalEx provides a basic Vim-like key configurat
 ### Insert Mode
 Insert mode keys in the Simple preset are empty, users can set keys to return to Normal mode through custom configuration.
 
-## Configuration Examples
 
-ModalEx supports various key binding methods, mainly including the following types:
-
-1. **Single Key Binding**: Directly map a single key to a ModalEx command
-2. **Command Sequence**: Combine multiple commands together and execute them in sequence
-3. **Combination Keys**: Implement richer functionality through key combinations, such as using "yy" combination key to copy current line
-
-The following is a key binding configuration example in Normal mode, showing the specific application of the above binding methods:
-
-```jsonc
-"normal": {
-    // Basic command binding: single key bound to a single ModalEx command
-    "y": "modalex.action.yank",           // Press y key to copy selected text
-    "x": "modalex.action.cut",            // Press x key to cut selected text
-    "p": "modalex.action.paste",          // Press p key to paste clipboard content
-    
-    // Command with parameters: single key bound to a ModalEx command with parameters
-    "P": {
-        "command": "modalex.action.paste",  // Press P key to paste clipboard content before cursor
-        "args": {
-            "before": true                  // Paste before cursor position
-        }
-    },
-    
-    // Command sequence: single key bound to multiple ModalEx commands, executed in sequence
-    "o": [
-        "editor.action.insertLineAfter",     // Press o key to insert new line below cursor's current line
-        "modalex.enterInsert"                // Enter Insert mode
-    ],
-    
-    // Nested key mapping: use of combination keys
-    "d": {
-        "d": "modalex.action.deleteAndYankLine",    // Press d key then d key to delete current entire line
-        "w": "deleteWordRight",                     // Press d key then w key to delete word
-        "x": {
-            // ...                                  // Similarly, can continue nesting
-        }
-    },
-    
-    // Mode switching commands
-    "i": "modalex.enterInsert",               // Press i key to enter Insert mode
-    "a": "modalex.enterInsertRight",          // Press a key to enter Insert mode and move cursor right
-    "v": "modalex.enterVisual",               // Press v key to enter Visual mode
-    "V": "modalex.enterVisualLine"            // Press V key to enter Visual Line mode
-}
-```
-
-**Note**: Commands with parameters and nested key mappings cannot exist at the same time, the following configuration method is invalid:
-
-```jsonc
-"normal": {
-    "d": {
-        "command": "editor.action.deleteLines",
-        "args": { "lines": 2 },
-        "d": "editor.action.deleteLines",
-        "y": "editor.action.copyLinesDownAction"
-    }
-}
-```
 
 # Mode Description
 
