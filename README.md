@@ -205,9 +205,6 @@ Search mode adopts different search strategies based on parameters when entering
 
 * **singleChar**: If true, only search for a single character, immediately jump to target position after pressing a character, no need to press Enter key.
 
-## Visual Mode
-
-TODO
 
 # Commands
 
