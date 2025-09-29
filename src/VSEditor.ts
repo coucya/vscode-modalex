@@ -168,52 +168,31 @@ function cursorUpOrDownSelect_line(
         throw new Error("selections is empty");
 
     const lastSelection = selections[selections.length - 1];
-    const secondToLast = selections.length > 1 ? selections[selections.length - 2] : undefined;
     const documentLineCount = document.lineCount;
 
-    let newSelections: vscode.Selection[];
+    let nextLineNumber: number;
 
     if (direction === "up") {
-        if (secondToLast && secondToLast.anchor.line <= lastSelection.anchor.line) {
-            newSelections = selections.slice(0, -1);
-        } else {
-            const nextLine = lastSelection.active.line - 1;
-            if (nextLine >= 0) {
-                const newRange = document.lineAt(nextLine).range;
-                let newSelection: vscode.Selection;
-                if (lastSelection.active.character >= lastSelection.anchor.character) {
-                    newSelection = new vscode.Selection(newRange.start, newRange.end);
-                } else {
-                    newSelection = new vscode.Selection(newRange.end, newRange.start);
-                }
-                newSelections = [...selections, newSelection];
-            } else {
-                newSelections = [...selections];
-            }
-        }
+        nextLineNumber = Math.min(documentLineCount - 1, Math.max(0, lastSelection.active.line - 1));
     } else if (direction === "down") {
-        if (secondToLast && secondToLast.anchor.line >= lastSelection.anchor.line) {
-            newSelections = selections.slice(0, -1);
-        } else {
-            const nextLine = lastSelection.active.line + 1;
-            if (nextLine < documentLineCount) {
-                const newRange = document.lineAt(nextLine).range;
-                let newSelection: vscode.Selection;
-                if (lastSelection.active.character >= lastSelection.anchor.character) {
-                    newSelection = new vscode.Selection(newRange.start, newRange.end);
-                } else {
-                    newSelection = new vscode.Selection(newRange.end, newRange.start);
-                }
-                newSelections = [...selections, newSelection];
-            } else {
-                newSelections = [...selections];
-            }
-        }
+        nextLineNumber = Math.min(documentLineCount - 1, Math.max(0, lastSelection.active.line + 1));
     } else {
         throw new Error(`invalid direction: '${direction}', must be 'up' or 'down'`);
     }
 
-    return newSelections;
+    const nextLine = document.lineAt(nextLineNumber);
+    const anchorLine = document.lineAt(lastSelection.anchor.line);
+
+    let selection: vscode.Selection;
+    if (nextLineNumber < lastSelection.anchor.line) {
+        selection = new vscode.Selection(anchorLine.range.end, nextLine.range.start);
+    } else if (nextLineNumber > lastSelection.anchor.line) {
+        selection = new vscode.Selection(anchorLine.range.start, nextLine.range.end);
+    } else {
+        selection = new vscode.Selection(anchorLine.range.start, nextLine.range.end);
+    }
+
+    return [selection];
 }
 
 function cursorUpOrDownSelect_block(

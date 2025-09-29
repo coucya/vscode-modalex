@@ -167,12 +167,22 @@ function _cursorUpSelect() {
     if (!editor)
         return;
     editor.cursorUpSelect();
+
+    const vsEditor = editor.getVSCodeTextEditor()
+    vsEditor.revealRange(
+        vsEditor.selections[vsEditor.selections.length - 1],
+    );
 }
 function _cursorDownSelect() {
     let editor = getExtension().getActiveEditor();
     if (!editor)
         return;
     editor.cursorDownSelect();
+
+    const vsEditor = editor.getVSCodeTextEditor()
+    vsEditor.revealRange(
+        vsEditor.selections[vsEditor.selections.length - 1],
+    );
 }
 function _cursorLeftSelect() {
     let editor = getExtension().getActiveEditor();
