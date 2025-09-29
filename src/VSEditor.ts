@@ -153,6 +153,17 @@ class VSVisualModal extends VisualModal {
         }
     }
 
+    override onDidLeave(): void | Thenable<void> {
+        super.onDidLeave();
+
+        let vsEditor = this.getEditor().getVSCodeTextEditor();
+        const active = vsEditor.selections[vsEditor.selections.length - 1].active;
+        const range = new vscode.Range(active, active);
+        setTimeout(() => {
+            vsEditor.revealRange(range);
+        }, 10);
+    }
+
     override async onExecCommand(command: string, ...args: any[]) {
         await vscode.commands.executeCommand(command, ...args);
     }

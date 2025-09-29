@@ -169,9 +169,8 @@ function _cursorUpSelect() {
     editor.cursorUpSelect();
 
     const vsEditor = editor.getVSCodeTextEditor()
-    vsEditor.revealRange(
-        vsEditor.selections[vsEditor.selections.length - 1],
-    );
+    const active = vsEditor.selections[vsEditor.selections.length - 1].active.with(undefined, 0);
+    vsEditor.revealRange(new vscode.Range(active, active));
 }
 function _cursorDownSelect() {
     let editor = getExtension().getActiveEditor();
@@ -180,9 +179,8 @@ function _cursorDownSelect() {
     editor.cursorDownSelect();
 
     const vsEditor = editor.getVSCodeTextEditor()
-    vsEditor.revealRange(
-        vsEditor.selections[vsEditor.selections.length - 1],
-    );
+    const active = vsEditor.selections[vsEditor.selections.length - 1].active.with(undefined, 0);
+    vsEditor.revealRange(new vscode.Range(active, active));
 }
 function _cursorLeftSelect() {
     let editor = getExtension().getActiveEditor();
