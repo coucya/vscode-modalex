@@ -1,12 +1,11 @@
-import * as vscode from 'vscode';
 import { EventEmitter } from "events";
+import * as vscode from 'vscode';
 
-import { ModalType } from './modal/modal';
 import { Keymap } from './modal/keymap';
+import { ModalType } from './modal/modal';
 import { parseKeymapConfigObject, ParseKeymapError } from './modal/parser';
 
-import { extensionName, extensionDisplayName } from "./config";
-import { ExtConfig } from "./config";
+import { ExtConfig, extensionDisplayName, extensionName } from "./config";
 
 import presets from "./presets";
 
@@ -561,14 +560,8 @@ function reloadConfig() {
 }
 
 export {
-    initialize,
-    enable,
-    disable,
-    reloadConfig,
-    log,
+    disable, enable, Extension, getExtension, initialize, log,
     logError,
     notify,
-    notifyError,
-    getExtension,
-    Extension,
+    notifyError, reloadConfig
 };
