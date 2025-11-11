@@ -212,26 +212,59 @@ function _cursorWordStart() {
     if (!editor || !cncut)
         return;
 
-    const position = editor.selection.active;
-    const line = editor.document.lineAt(position.line);
-    const lineText = line.text;
+    let newSelections: vscode.Selection[] = [];
 
-    // 对当前行进行分词
-    const words = cncut.cut(lineText);
+    for (const selection of editor.selections) {
+        const position = selection.active;
+        const line = editor.document.lineAt(position.line);
+        const lineText = line.text;
 
-    // 找到当前位置所在的词
-    for (const word of words) {
-        if (position.character >= word.start && position.character < word.end) {
-            // 移动到词的开始位置
-            const newPosition = new vscode.Position(position.line, word.start);
-            editor.selection = new vscode.Selection(newPosition, newPosition);
-            return;
+        // 对当前行进行分词
+        const words = cncut.cut(lineText);
+
+        let targetPosition: vscode.Position | null = null;
+        let currentWordIndex = -1;
+
+        // 找到当前光标所在的词
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            if (position.character >= word.start && position.character <= word.end) {
+                currentWordIndex = i;
+                // 如果光标在词的开始位置，跳转到上一个词的开头
+                if (position.character === word.start) {
+                    if (i > 0) {
+                        targetPosition = new vscode.Position(position.line, words[i - 1].start);
+                    } else {
+                        // 已经是第一个词，移动到行首
+                        targetPosition = new vscode.Position(position.line, 0);
+                    }
+                } else {
+                    // 光标在词的中间或末尾，移动到词的开始
+                    targetPosition = new vscode.Position(position.line, word.start);
+                }
+                break;
+            }
         }
+
+        // 如果没找到当前词，查找上一个词
+        if (!targetPosition) {
+            for (let i = words.length - 1; i >= 0; i--) {
+                if (words[i].end < position.character) {
+                    targetPosition = new vscode.Position(position.line, words[i].start);
+                    break;
+                }
+            }
+        }
+
+        // 如果还是没找到，移动到行首
+        if (!targetPosition) {
+            targetPosition = new vscode.Position(position.line, 0);
+        }
+
+        newSelections.push(new vscode.Selection(targetPosition, targetPosition));
     }
 
-    // 如果没有找到词，移动到行首
-    const newPosition = new vscode.Position(position.line, 0);
-    editor.selection = new vscode.Selection(newPosition, newPosition);
+    editor.selections = newSelections;
 }
 
 function _cursorWordEnd() {
@@ -239,26 +272,59 @@ function _cursorWordEnd() {
     if (!editor || !cncut)
         return;
 
-    const position = editor.selection.active;
-    const line = editor.document.lineAt(position.line);
-    const lineText = line.text;
+    let newSelections: vscode.Selection[] = [];
 
-    // 对当前行进行分词
-    const words = cncut.cut(lineText);
+    for (const selection of editor.selections) {
+        const position = selection.active;
+        const line = editor.document.lineAt(position.line);
+        const lineText = line.text;
 
-    // 找到当前位置所在的词
-    for (const word of words) {
-        if (position.character >= word.start && position.character < word.end) {
-            // 移动到词的结束位置（下一个字符）
-            const newPosition = new vscode.Position(position.line, word.end);
-            editor.selection = new vscode.Selection(newPosition, newPosition);
-            return;
+        // 对当前行进行分词
+        const words = cncut.cut(lineText);
+
+        let targetPosition: vscode.Position | null = null;
+        let currentWordIndex = -1;
+
+        // 找到当前光标所在的词
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            if (position.character >= word.start && position.character <= word.end) {
+                currentWordIndex = i;
+                // 如果光标在词的结束位置，跳转到下一个词的结尾
+                if (position.character === word.end) {
+                    if (i < words.length - 1) {
+                        targetPosition = new vscode.Position(position.line, words[i + 1].end);
+                    } else {
+                        // 已经是最后一个词，移动到行尾
+                        targetPosition = new vscode.Position(position.line, lineText.length);
+                    }
+                } else {
+                    // 光标在词的开始或中间，移动到词的结束
+                    targetPosition = new vscode.Position(position.line, word.end);
+                }
+                break;
+            }
         }
+
+        // 如果没找到当前词，查找下一个词
+        if (!targetPosition) {
+            for (let i = 0; i < words.length; i++) {
+                if (words[i].start > position.character) {
+                    targetPosition = new vscode.Position(position.line, words[i].end);
+                    break;
+                }
+            }
+        }
+
+        // 如果还是没找到，移动到行尾
+        if (!targetPosition) {
+            targetPosition = new vscode.Position(position.line, lineText.length);
+        }
+
+        newSelections.push(new vscode.Selection(targetPosition, targetPosition));
     }
 
-    // 如果没有找到词，移动到行尾
-    const newPosition = new vscode.Position(position.line, lineText.length);
-    editor.selection = new vscode.Selection(newPosition, newPosition);
+    editor.selections = newSelections;
 }
 
 function _cursorPrevWordStart() {
@@ -266,44 +332,38 @@ function _cursorPrevWordStart() {
     if (!editor || !cncut)
         return;
 
-    const position = editor.selection.active;
-    const line = editor.document.lineAt(position.line);
-    const lineText = line.text;
+    let newSelections: vscode.Selection[] = [];
 
-    // 对当前行进行分词
-    const words = cncut.cut(lineText);
+    for (const selection of editor.selections) {
+        const position = selection.active;
+        const line = editor.document.lineAt(position.line);
+        const lineText = line.text;
 
-    // 找到当前位置前面的词
-    let targetWord = null;
-    for (let i = 0; i < words.length; i++) {
-        const word = words[i];
-        if (position.character >= word.start && position.character < word.end) {
-            // 找到当前词，取前一个
-            if (i > 0) {
-                targetWord = words[i - 1];
-            }
-            break;
-        }
-    }
+        // 对当前行进行分词
+        const words = cncut.cut(lineText);
 
-    // 如果没找到当前词，查找当前位置前面的词
-    if (!targetWord) {
+        // 找到当前位置前面的词的开始位置
+        let targetWord = null;
         for (let i = words.length - 1; i >= 0; i--) {
-            if (words[i].start < position.character) {
-                targetWord = words[i];
+            const word = words[i];
+            if (word.start < position.character) {
+                targetWord = word;
                 break;
             }
         }
+
+        let targetPosition: vscode.Position;
+        if (targetWord) {
+            targetPosition = new vscode.Position(position.line, targetWord.start);
+        } else {
+            // 没有找到前面的词，移动到行首
+            targetPosition = new vscode.Position(position.line, 0);
+        }
+
+        newSelections.push(new vscode.Selection(targetPosition, targetPosition));
     }
 
-    if (targetWord) {
-        const newPosition = new vscode.Position(position.line, targetWord.start);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-    } else {
-        // 没有找到前面的词，移动到行首
-        const newPosition = new vscode.Position(position.line, 0);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-    }
+    editor.selections = newSelections;
 }
 
 function _cursorPrevWordEnd() {
@@ -311,44 +371,38 @@ function _cursorPrevWordEnd() {
     if (!editor || !cncut)
         return;
 
-    const position = editor.selection.active;
-    const line = editor.document.lineAt(position.line);
-    const lineText = line.text;
+    let newSelections: vscode.Selection[] = [];
 
-    // 对当前行进行分词
-    const words = cncut.cut(lineText);
+    for (const selection of editor.selections) {
+        const position = selection.active;
+        const line = editor.document.lineAt(position.line);
+        const lineText = line.text;
 
-    // 找到当前位置前面的词
-    let targetWord = null;
-    for (let i = 0; i < words.length; i++) {
-        const word = words[i];
-        if (position.character >= word.start && position.character < word.end) {
-            // 找到当前词，取前一个
-            if (i > 0) {
-                targetWord = words[i - 1];
-            }
-            break;
-        }
-    }
+        // 对当前行进行分词
+        const words = cncut.cut(lineText);
 
-    // 如果没找到当前词，查找当前位置前面的词
-    if (!targetWord) {
+        // 找到当前位置前面的词的结束位置
+        let targetWord = null;
         for (let i = words.length - 1; i >= 0; i--) {
-            if (words[i].start < position.character) {
-                targetWord = words[i];
+            const word = words[i];
+            if (word.end < position.character) {
+                targetWord = word;
                 break;
             }
         }
+
+        let targetPosition: vscode.Position;
+        if (targetWord) {
+            targetPosition = new vscode.Position(position.line, targetWord.end);
+        } else {
+            // 没有找到前面的词，移动到行首
+            targetPosition = new vscode.Position(position.line, 0);
+        }
+
+        newSelections.push(new vscode.Selection(targetPosition, targetPosition));
     }
 
-    if (targetWord) {
-        const newPosition = new vscode.Position(position.line, targetWord.end);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-    } else {
-        // 没有找到前面的词，移动到行首
-        const newPosition = new vscode.Position(position.line, 0);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-    }
+    editor.selections = newSelections;
 }
 
 function _cursorNextWordStart() {
@@ -356,44 +410,51 @@ function _cursorNextWordStart() {
     if (!editor || !cncut)
         return;
 
-    const position = editor.selection.active;
-    const line = editor.document.lineAt(position.line);
-    const lineText = line.text;
+    let newSelections: vscode.Selection[] = [];
 
-    // 对当前行进行分词
-    const words = cncut.cut(lineText);
+    for (const selection of editor.selections) {
+        const position = selection.active;
+        const line = editor.document.lineAt(position.line);
+        const lineText = line.text;
 
-    // 找到当前位置后面的词
-    let targetWord = null;
-    for (let i = 0; i < words.length; i++) {
-        const word = words[i];
-        if (position.character >= word.start && position.character < word.end) {
-            // 找到当前词，取下一个
-            if (i < words.length - 1) {
-                targetWord = words[i + 1];
-            }
-            break;
-        }
-    }
+        // 对当前行进行分词
+        const words = cncut.cut(lineText);
 
-    // 如果没找到当前词，查找当前位置后面的词
-    if (!targetWord) {
+        // 找到当前位置后面的词
+        let targetWord = null;
         for (let i = 0; i < words.length; i++) {
-            if (words[i].start > position.character) {
-                targetWord = words[i];
+            const word = words[i];
+            if (position.character >= word.start && position.character < word.end) {
+                // 找到当前词，取下一个
+                if (i < words.length - 1) {
+                    targetWord = words[i + 1];
+                }
                 break;
             }
         }
+
+        // 如果没找到当前词，查找当前位置后面的词
+        if (!targetWord) {
+            for (let i = 0; i < words.length; i++) {
+                if (words[i].start > position.character) {
+                    targetWord = words[i];
+                    break;
+                }
+            }
+        }
+
+        let targetPosition: vscode.Position;
+        if (targetWord) {
+            targetPosition = new vscode.Position(position.line, targetWord.start);
+        } else {
+            // 没有找到后面的词，移动到行尾
+            targetPosition = new vscode.Position(position.line, lineText.length);
+        }
+
+        newSelections.push(new vscode.Selection(targetPosition, targetPosition));
     }
 
-    if (targetWord) {
-        const newPosition = new vscode.Position(position.line, targetWord.start);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-    } else {
-        // 没有找到后面的词，移动到行尾
-        const newPosition = new vscode.Position(position.line, lineText.length);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-    }
+    editor.selections = newSelections;
 }
 
 function _cursorNextWordEnd() {
@@ -401,44 +462,51 @@ function _cursorNextWordEnd() {
     if (!editor || !cncut)
         return;
 
-    const position = editor.selection.active;
-    const line = editor.document.lineAt(position.line);
-    const lineText = line.text;
+    let newSelections: vscode.Selection[] = [];
 
-    // 对当前行进行分词
-    const words = cncut.cut(lineText);
+    for (const selection of editor.selections) {
+        const position = selection.active;
+        const line = editor.document.lineAt(position.line);
+        const lineText = line.text;
 
-    // 找到当前位置后面的词
-    let targetWord = null;
-    for (let i = 0; i < words.length; i++) {
-        const word = words[i];
-        if (position.character >= word.start && position.character < word.end) {
-            // 找到当前词，取下一个
-            if (i < words.length - 1) {
-                targetWord = words[i + 1];
-            }
-            break;
-        }
-    }
+        // 对当前行进行分词
+        const words = cncut.cut(lineText);
 
-    // 如果没找到当前词，查找当前位置后面的词
-    if (!targetWord) {
+        // 找到当前位置后面的词的结束位置
+        let targetWord = null;
         for (let i = 0; i < words.length; i++) {
-            if (words[i].start > position.character) {
-                targetWord = words[i];
+            const word = words[i];
+            if (position.character >= word.start && position.character < word.end) {
+                // 找到当前词，取下一个
+                if (i < words.length - 1) {
+                    targetWord = words[i + 1];
+                }
                 break;
             }
         }
+
+        // 如果没找到当前词，查找当前位置后面的词
+        if (!targetWord) {
+            for (let i = 0; i < words.length; i++) {
+                if (words[i].start > position.character) {
+                    targetWord = words[i];
+                    break;
+                }
+            }
+        }
+
+        let targetPosition: vscode.Position;
+        if (targetWord) {
+            targetPosition = new vscode.Position(position.line, targetWord.end);
+        } else {
+            // 没有找到后面的词，移动到行尾
+            targetPosition = new vscode.Position(position.line, lineText.length);
+        }
+
+        newSelections.push(new vscode.Selection(targetPosition, targetPosition));
     }
 
-    if (targetWord) {
-        const newPosition = new vscode.Position(position.line, targetWord.end);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-    } else {
-        // 没有找到后面的词，移动到行尾
-        const newPosition = new vscode.Position(position.line, lineText.length);
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-    }
+    editor.selections = newSelections;
 }
 
 function registerCommands(context: vscode.ExtensionContext) {
