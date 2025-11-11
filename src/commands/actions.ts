@@ -1,16 +1,18 @@
 import * as vscode from "vscode";
-
-import { Jieba } from "@node-rs/jieba";
-import { dict } from '@node-rs/jieba/dict'
+import fs from "fs"
 
 import { extensionName } from "../config";
 import { getExtension } from "../extension";
 import { ModalType } from "../modal/modal";
 
+import { Cncut } from "../utils/cncut"
+// @ts-ignore
+import dict from "../utils/cncut/dict.txt"
+import path from "path";
 
 const commandPrefix = `${extensionName}.action`;
 
-const jieba = Jieba.withDict(dict)
+let cncut: Cncut | null = null;
 
 function eolToString(eol: vscode.EndOfLine): string {
     switch (eol) {
@@ -201,277 +203,267 @@ function _cursorRightSelect() {
     editor.cursorRightSelect();
 }
 
-// Helper function to check if a character is a word character (letter, digit, or underscore)
-function isWordChar(char: string): boolean {
-    return /[a-zA-Z0-9_]/.test(char);
-}
 
-// Helper function to check if a character is a Chinese character
-function isChineseChar(char: string): boolean {
-    return /[\u4e00-\u9fff]/.test(char);
-}
 
-// Helper function to check if a character is whitespace
-function isWhitespace(char: string): boolean {
-    return /\s/.test(char);
-}
 
-// Helper function to get segmented words from a line of text
-function getSegmentedWords(line: string): { text: string, start: number, end: number }[] {
-    const words: { text: string, start: number, end: number }[] = [];
-    let i = 0;
-
-    while (i < line.length) {
-        const char = line[i];
-
-        if (isWhitespace(char)) {
-            // Skip whitespace
-            i++;
-        } else if (isWordChar(char)) {
-            // English word - collect consecutive word characters
-            let start = i;
-            while (i < line.length && isWordChar(line[i])) {
-                i++;
-            }
-            words.push({ text: line.slice(start, i), start, end: i });
-        } else if (isChineseChar(char)) {
-            // For Chinese characters, we need to segment them
-            const remainingText = line.slice(i);
-            const segmentResult = jieba.cut(remainingText, true);
-
-            if (segmentResult.length > 0) {
-                const firstSegment = segmentResult[0];
-                words.push({ text: firstSegment, start: i, end: i + firstSegment.length });
-                i += firstSegment.length;
-            } else {
-                // Fallback: treat single character as a word
-                words.push({ text: char, start: i, end: i + 1 });
-                i++;
-            }
-        } else {
-            // Other punctuation or symbols - treat as single character word
-            words.push({ text: char, start: i, end: i + 1 });
-            i++;
-        }
-    }
-
-    return words;
-}
-
-// Helper function to find the word at the current cursor position
-function findWordAtPosition(line: string, position: number): { text: string, start: number, end: number } | null {
-    const words = getSegmentedWords(line);
-
-    for (const word of words) {
-        if (position >= word.start && position <= word.end) {
-            return word;
-        }
-    }
-
-    return null;
-}
 
 function _cursorWordStart() {
     let editor = vscode.window.activeTextEditor;
-    if (!editor)
+    if (!editor || !cncut)
         return;
 
-    const selections = editor.selections;
-    const newSelections: vscode.Selection[] = [];
+    const position = editor.selection.active;
+    const line = editor.document.lineAt(position.line);
+    const lineText = line.text;
 
-    for (const selection of selections) {
-        const position = selection.active;
-        const line = editor.document.lineAt(position.line).text;
+    // 对当前行进行分词
+    const words = cncut.cut(lineText);
 
-        // Find the word at current position
-        const currentWord = findWordAtPosition(line, position.character);
-
-        if (currentWord) {
-            // Move to the start of the current word
-            const newPosition = new vscode.Position(position.line, currentWord.start);
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
-        } else {
-            // If not in a word, move to beginning of line
-            const newPosition = new vscode.Position(position.line, 0);
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
+    // 找到当前位置所在的词
+    for (const word of words) {
+        if (position.character >= word.start && position.character < word.end) {
+            // 移动到词的开始位置
+            const newPosition = new vscode.Position(position.line, word.start);
+            editor.selection = new vscode.Selection(newPosition, newPosition);
+            return;
         }
     }
 
-    editor.selections = newSelections;
+    // 如果没有找到词，移动到行首
+    const newPosition = new vscode.Position(position.line, 0);
+    editor.selection = new vscode.Selection(newPosition, newPosition);
 }
 
 function _cursorWordEnd() {
     let editor = vscode.window.activeTextEditor;
-    if (!editor)
+    if (!editor || !cncut)
         return;
 
-    const selections = editor.selections;
-    const newSelections: vscode.Selection[] = [];
+    const position = editor.selection.active;
+    const line = editor.document.lineAt(position.line);
+    const lineText = line.text;
 
-    for (const selection of selections) {
-        const position = selection.active;
-        const line = editor.document.lineAt(position.line).text;
+    // 对当前行进行分词
+    const words = cncut.cut(lineText);
 
-        // Find the word at current position
-        const currentWord = findWordAtPosition(line, position.character);
-
-        if (currentWord) {
-            // Move to the end of the current word (exclusive)
-            const newPosition = new vscode.Position(position.line, currentWord.end - 1);
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
-        } else {
-            // If not in a word, move to end of line
-            const newPosition = new vscode.Position(position.line, Math.max(0, line.length - 1));
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
+    // 找到当前位置所在的词
+    for (const word of words) {
+        if (position.character >= word.start && position.character < word.end) {
+            // 移动到词的结束位置（下一个字符）
+            const newPosition = new vscode.Position(position.line, word.end);
+            editor.selection = new vscode.Selection(newPosition, newPosition);
+            return;
         }
     }
 
-    editor.selections = newSelections;
+    // 如果没有找到词，移动到行尾
+    const newPosition = new vscode.Position(position.line, lineText.length);
+    editor.selection = new vscode.Selection(newPosition, newPosition);
 }
 
 function _cursorPrevWordStart() {
     let editor = vscode.window.activeTextEditor;
-    if (!editor)
+    if (!editor || !cncut)
         return;
 
-    const selections = editor.selections;
-    const newSelections: vscode.Selection[] = [];
+    const position = editor.selection.active;
+    const line = editor.document.lineAt(position.line);
+    const lineText = line.text;
 
-    for (const selection of selections) {
-        const position = selection.active;
-        const line = editor.document.lineAt(position.line).text;
-        const words = getSegmentedWords(line);
+    // 对当前行进行分词
+    const words = cncut.cut(lineText);
 
-        // Find the previous word
-        let prevWord: { text: string, start: number, end: number } | null = null;
-
-        for (const word of words) {
-            if (word.start < position.character) {
-                prevWord = word;
-            } else {
-                break;
+    // 找到当前位置前面的词
+    let targetWord = null;
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        if (position.character >= word.start && position.character < word.end) {
+            // 找到当前词，取前一个
+            if (i > 0) {
+                targetWord = words[i - 1];
             }
-        }
-
-        if (prevWord) {
-            const newPosition = new vscode.Position(position.line, prevWord.start);
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
-        } else {
-            // Move to beginning of line
-            const newPosition = new vscode.Position(position.line, 0);
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
+            break;
         }
     }
 
-    editor.selections = newSelections;
+    // 如果没找到当前词，查找当前位置前面的词
+    if (!targetWord) {
+        for (let i = words.length - 1; i >= 0; i--) {
+            if (words[i].start < position.character) {
+                targetWord = words[i];
+                break;
+            }
+        }
+    }
+
+    if (targetWord) {
+        const newPosition = new vscode.Position(position.line, targetWord.start);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+    } else {
+        // 没有找到前面的词，移动到行首
+        const newPosition = new vscode.Position(position.line, 0);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+    }
 }
 
 function _cursorPrevWordEnd() {
     let editor = vscode.window.activeTextEditor;
-    if (!editor)
+    if (!editor || !cncut)
         return;
 
-    const selections = editor.selections;
-    const newSelections: vscode.Selection[] = [];
+    const position = editor.selection.active;
+    const line = editor.document.lineAt(position.line);
+    const lineText = line.text;
 
-    for (const selection of selections) {
-        const position = selection.active;
-        const line = editor.document.lineAt(position.line).text;
-        const words = getSegmentedWords(line);
+    // 对当前行进行分词
+    const words = cncut.cut(lineText);
 
-        // Find the previous word
-        let prevWord: { text: string, start: number, end: number } | null = null;
-
-        for (const word of words) {
-            if (word.start < position.character) {
-                prevWord = word;
-            } else {
-                break;
+    // 找到当前位置前面的词
+    let targetWord = null;
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        if (position.character >= word.start && position.character < word.end) {
+            // 找到当前词，取前一个
+            if (i > 0) {
+                targetWord = words[i - 1];
             }
-        }
-
-        if (prevWord) {
-            const newPosition = new vscode.Position(position.line, prevWord.end - 1);
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
-        } else {
-            // Move to beginning of line
-            const newPosition = new vscode.Position(position.line, 0);
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
+            break;
         }
     }
 
-    editor.selections = newSelections;
+    // 如果没找到当前词，查找当前位置前面的词
+    if (!targetWord) {
+        for (let i = words.length - 1; i >= 0; i--) {
+            if (words[i].start < position.character) {
+                targetWord = words[i];
+                break;
+            }
+        }
+    }
+
+    if (targetWord) {
+        const newPosition = new vscode.Position(position.line, targetWord.end);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+    } else {
+        // 没有找到前面的词，移动到行首
+        const newPosition = new vscode.Position(position.line, 0);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+    }
 }
 
 function _cursorNextWordStart() {
     let editor = vscode.window.activeTextEditor;
-    if (!editor)
+    if (!editor || !cncut)
         return;
 
-    const selections = editor.selections;
-    const newSelections: vscode.Selection[] = [];
+    const position = editor.selection.active;
+    const line = editor.document.lineAt(position.line);
+    const lineText = line.text;
 
-    for (const selection of selections) {
-        const position = selection.active;
-        const line = editor.document.lineAt(position.line).text;
-        const words = getSegmentedWords(line);
+    // 对当前行进行分词
+    const words = cncut.cut(lineText);
 
-        // Find the next word
-        let foundNextWord = false;
-        for (const word of words) {
-            if (word.start > position.character) {
-                const newPosition = new vscode.Position(position.line, word.start);
-                newSelections.push(new vscode.Selection(newPosition, newPosition));
-                foundNextWord = true;
-                break;
+    // 找到当前位置后面的词
+    let targetWord = null;
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        if (position.character >= word.start && position.character < word.end) {
+            // 找到当前词，取下一个
+            if (i < words.length - 1) {
+                targetWord = words[i + 1];
             }
-        }
-
-        // If no next word, move to end of line
-        if (!foundNextWord) {
-            const newPosition = new vscode.Position(position.line, Math.max(0, line.length - 1));
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
+            break;
         }
     }
 
-    editor.selections = newSelections;
+    // 如果没找到当前词，查找当前位置后面的词
+    if (!targetWord) {
+        for (let i = 0; i < words.length; i++) {
+            if (words[i].start > position.character) {
+                targetWord = words[i];
+                break;
+            }
+        }
+    }
+
+    if (targetWord) {
+        const newPosition = new vscode.Position(position.line, targetWord.start);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+    } else {
+        // 没有找到后面的词，移动到行尾
+        const newPosition = new vscode.Position(position.line, lineText.length);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+    }
 }
 
 function _cursorNextWordEnd() {
     let editor = vscode.window.activeTextEditor;
-    if (!editor)
+    if (!editor || !cncut)
         return;
 
-    const selections = editor.selections;
-    const newSelections: vscode.Selection[] = [];
+    const position = editor.selection.active;
+    const line = editor.document.lineAt(position.line);
+    const lineText = line.text;
 
-    for (const selection of selections) {
-        const position = selection.active;
-        const line = editor.document.lineAt(position.line).text;
-        const words = getSegmentedWords(line);
+    // 对当前行进行分词
+    const words = cncut.cut(lineText);
 
-        // Find the next word
-        let foundNextWord = false;
-        for (const word of words) {
-            if (word.start > position.character) {
-                const newPosition = new vscode.Position(position.line, word.end - 1);
-                newSelections.push(new vscode.Selection(newPosition, newPosition));
-                foundNextWord = true;
-                break;
+    // 找到当前位置后面的词
+    let targetWord = null;
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        if (position.character >= word.start && position.character < word.end) {
+            // 找到当前词，取下一个
+            if (i < words.length - 1) {
+                targetWord = words[i + 1];
             }
-        }
-
-        // If no next word, move to end of line
-        if (!foundNextWord) {
-            const newPosition = new vscode.Position(position.line, Math.max(0, line.length - 1));
-            newSelections.push(new vscode.Selection(newPosition, newPosition));
+            break;
         }
     }
 
-    editor.selections = newSelections;
+    // 如果没找到当前词，查找当前位置后面的词
+    if (!targetWord) {
+        for (let i = 0; i < words.length; i++) {
+            if (words[i].start > position.character) {
+                targetWord = words[i];
+                break;
+            }
+        }
+    }
+
+    if (targetWord) {
+        const newPosition = new vscode.Position(position.line, targetWord.end);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+    } else {
+        // 没有找到后面的词，移动到行尾
+        const newPosition = new vscode.Position(position.line, lineText.length);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+    }
 }
 
 function registerCommands(context: vscode.ExtensionContext) {
+
+    (async () => {
+        let wordSeparators = vscode.workspace.getConfiguration("editor").get<string>("wordSeparators") || "";
+        wordSeparators = [...new Set(["\n", "\r", " ", ...wordSeparators])].join("")
+
+        const p = path.join(__dirname, dict);
+        const dictContent: string = await fs.promises.readFile(p, { encoding: "utf-8" })
+
+        cncut = new Cncut(dictContent, wordSeparators);
+    })();
+
+    const configChangeListener = vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration("editor.wordSeparators")) {
+            let wordSeparators = vscode.workspace.getConfiguration("editor").get<string>("wordSeparators") || "";
+            wordSeparators = [...new Set(["\n", "\r", " ", ...wordSeparators])].join("")
+
+            cncut?.setDelimiters(wordSeparators)
+        }
+    });
+
+    context.subscriptions.push(configChangeListener);
+
     context.subscriptions.push(
         vscode.commands.registerCommand(`${commandPrefix}.yank`, _yank),
         vscode.commands.registerCommand(`${commandPrefix}.cut`, _cut),

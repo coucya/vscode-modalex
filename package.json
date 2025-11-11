@@ -22,7 +22,6 @@
         "onStartupFinished"
     ],
     "main": "./dist/extension.js",
-    "type": "module",
     "contributes": {
         "configuration": {
             "type": "object",
@@ -319,19 +318,22 @@
         ]
     },
     "scripts": {
-        "package": "tsc & vite build & vsce package --no-dependencies",
+        "package": "rollup -c && vsce package --no-dependencies",
         "publish": "vsce publish --no-dependencies",
-        "build": "tsc & vite build",
-        "watch": "vite build -w"
+        "build": "rollup -c",
+        "watch": "rollup -c -w"
     },
-    "dependencies": {
-        "@node-rs/jieba": "^2.0.1",
-        "@node-rs/jieba-wasm32-wasi": "2.0.1"
-    },
+    "dependencies": {},
     "devDependencies": {
+        "@rollup/plugin-commonjs": "^29.0.0",
+        "@rollup/plugin-node-resolve": "^16.0.3",
+        "@rollup/plugin-typescript": "^12.3.0",
+        "@rollup/plugin-url": "^8.0.2",
+        "@rollup/plugin-wasm": "^6.2.2",
         "@types/node": "^20.19.17",
         "@types/vscode": "^1.100.0",
-        "typescript": "^5.9.2",
-        "vite": "^5.4.20"
+        "rollup": "^4.53.2",
+        "rollup-plugin-copy": "^3.5.0",
+        "typescript": "^5.9.2"
     }
 }
