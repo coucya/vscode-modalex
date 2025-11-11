@@ -12,4 +12,5 @@ vite.config.js
 vite.config.ts
 webpack.config.js
 webpack.config.cjs
+rollup.config.mjs
 todo.txt
