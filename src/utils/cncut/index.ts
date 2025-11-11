@@ -1,4 +1,10 @@
+// Constants
+const DEFAULT_DELIMITERS = ' ';
+const DEFAULT_WORD_FREQUENCY = 3;
+const DEFAULT_WORD_PROPERTY = 'no';
+const MIN_WORD_LENGTH = 1;
 
+// Type Definitions (simplified)
 export interface DictNode {
     [key: string]: DictNode | boolean | number | string | undefined;
     word_state?: boolean;
@@ -8,85 +14,119 @@ export interface DictNode {
 
 export type Dictionary = DictNode;
 
-type SplitResult = {
+export interface SplitResult {
     content: string;
-    start: number; end: number;
+    start: number;
+    end: number;
 }
 
-function split(str: string, delimiters: string): SplitResult[] {
+interface MatchResult {
+    word: string;
+    start: number;
+    end: number;
+}
+
+interface DictionaryEntry {
+    word: string;
+    frequency: number;
+    property: string;
+}
+
+// Utility Functions
+function validateInput(text: unknown): text is string {
+    return typeof text === 'string' && text.length > 0;
+}
+
+function createSplitResult(content: string, start: number, end: number): SplitResult {
+    return { content, start, end };
+}
+
+function splitTextByDelimiters(text: string, delimiters: string): SplitResult[] {
+    if (!validateInput(text)) {
+        return [];
+    }
+
     const result: SplitResult[] = [];
     const delimiterSet = new Set(delimiters);
-
     let currentStart = 0;
 
-    for (let i = 0; i < str.length; i++) {
-        if (delimiterSet.has(str[i])) {
+    for (let i = 0; i < text.length; i++) {
+        if (delimiterSet.has(text[i])) {
             if (currentStart < i) {
-                result.push({
-                    content: str.substring(currentStart, i),
-                    start: currentStart,
-                    end: i - 1,
-                });
+                result.push(createSplitResult(
+                    text.substring(currentStart, i),
+                    currentStart,
+                    i - 1
+                ));
             }
-            while (i < str.length && delimiterSet.has(str[i])) {
+
+            // Skip consecutive delimiters
+            while (i < text.length && delimiterSet.has(text[i])) {
                 i++;
             }
             currentStart = i;
         }
     }
-    if (currentStart < str.length) {
-        result.push({
-            content: str.substring(currentStart),
-            start: currentStart,
-            end: str.length - 1,
-        });
+
+    // Add the last segment if exists
+    if (currentStart < text.length) {
+        result.push(createSplitResult(
+            text.substring(currentStart),
+            currentStart,
+            text.length - 1
+        ));
     }
+
     return result;
 }
 
-export class Cncut {
-    private _dictionary: Dictionary;
-    private _delimiters: string;
-
-    constructor(dictContent: string, delimiters: string = " ") {
-        this._delimiters = delimiters;
-        this._dictionary = this._parseDictionaryContent(dictContent);
-    }
-
-    public setDelimiters(delimiters: string) {
-        this._delimiters = delimiters;
-    }
-
-    private _parseDictionaryContent(content: string): Dictionary {
+// Dictionary Parser
+class DictionaryParser {
+    static parse(content: string): Dictionary {
         const dict: Dictionary = {};
-        const lines = content.split('\n').filter(line => line.trim());
+        const lines = content.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
 
         for (const line of lines) {
-            const parts = line.trim().split(/\s+/);
-            if (parts.length === 0) continue;
-
-            const word = parts[0];
-            const frequency = parts[1] ? parseInt(parts[1], 10) : 3;
-            const property = parts[2] || 'no';
-
-            this._addWordToDict(dict, word, frequency, property);
+            const entry = this.parseLine(line);
+            if (entry) {
+                DictionaryBuilder.addWord(dict, entry);
+            }
         }
 
         return dict;
     }
 
-    private _addWordToDict(dict: Dictionary, word: string, frequency: number = 3, property: string = 'no'): void {
-        let current: DictNode = dict;
+    private static parseLine(line: string): DictionaryEntry | null {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length === 0) {
+            return null;
+        }
 
-        for (let i = 0; i < word.length; i++) {
-            const char = word[i];
-            const isLastChar = i === word.length - 1;
+        return {
+            word: parts[0],
+            frequency: parts[1] ? parseInt(parts[1], 10) : DEFAULT_WORD_FREQUENCY,
+            property: parts[2] || DEFAULT_WORD_PROPERTY
+        };
+    }
+}
+
+// Dictionary Builder
+class DictionaryBuilder {
+    static addWord(dict: Dictionary, entry: DictionaryEntry): void {
+        let current = dict;
+
+        for (let i = 0; i < entry.word.length; i++) {
+            const char = entry.word[i];
+            const isLastChar = i === entry.word.length - 1;
 
             if (!current[char]) {
                 current[char] = {};
             }
 
-            if (typeof current[char] === 'boolean') {
+            // Ensure we have a DictNode, not primitive values
+            if (typeof current[char] !== 'object' || current[char] === null) {
                 current[char] = {};
             }
 
@@ -94,118 +134,82 @@ export class Cncut {
 
             if (isLastChar) {
                 current.word_state = true;
-                current.word_frequency = frequency;
-                current.word_property = property;
+                current.word_frequency = entry.frequency;
+                current.word_property = entry.property;
             }
         }
     }
+}
 
-    public cut(text: string): SplitResult[] {
-        if (!text || typeof text !== 'string') {
+// Text Segmenter
+class TextSegmenter {
+    constructor(private dictionary: Dictionary) { }
+
+    segment(text: string, delimiters: string): SplitResult[] {
+        if (!validateInput(text)) {
             return [];
         }
 
+        const segments = splitTextByDelimiters(text, delimiters);
         const result: SplitResult[] = [];
-
-        const segments = split(text, this._delimiters);
 
         for (const segment of segments) {
             if (!segment.content.trim()) {
                 continue;
             }
 
-            const segmentPosition = segment.start;
-            const segmentText = segment.content;
-
-            const chineseWords = this._cutChineseText(segmentText);
-
-            const hasValidWords = chineseWords.some(word => word.content.length > 1 && this._isWordInDict(word.content));
+            const segmentedWords = this.segmentChineseText(segment.content);
+            const hasValidWords = this.hasValidDictionaryWords(segmentedWords);
 
             if (hasValidWords) {
-                for (const word of chineseWords) {
-                    result.push({
-                        content: word.content,
-                        start: segmentPosition + word.start,
-                        end: segmentPosition + word.end
-                    });
-                }
+                this.addSegmentedWords(result, segmentedWords, segment.start);
             } else {
-                result.push({
-                    content: segmentText,
-                    start: segmentPosition,
-                    end: segmentPosition + segmentText.length
-                });
+                this.addUnsegmentedWord(result, segment);
             }
         }
 
         return result;
     }
 
-    private _cutChineseText(text: string): SplitResult[] {
+    private segmentChineseText(text: string): SplitResult[] {
         const result: SplitResult[] = [];
-        let position = 0;
-        let lastMatchEnd = 0;
+        const matches = this.findAllMatches(text);
 
-        const allMatches: Array<{ word: string, start: number, end: number }> = [];
+        if (matches.length === 0) {
+            result.push(createSplitResult(text, 0, text.length));
+            return result;
+        }
+
+        this.buildResultFromMatches(result, matches, text);
+        return result;
+    }
+
+    private findAllMatches(text: string): MatchResult[] {
+        const matches: MatchResult[] = [];
+        let position = 0;
 
         while (position < text.length) {
-            const matchedWord = this._findLongestMatch(text, position);
-            if (matchedWord.word.length > 0) {
-                allMatches.push(matchedWord);
-                position = matchedWord.end;
+            const match = this.findLongestMatch(text, position);
+            if (match.word.length > 0) {
+                matches.push(match);
+                position = match.end;
             } else {
                 position++;
             }
         }
 
-        if (allMatches.length === 0) {
-            result.push({
-                content: text,
-                start: 0,
-                end: text.length
-            });
-        } else {
-            let lastEnd = 0;
-            for (const match of allMatches) {
-                if (match.start > lastEnd) {
-                    const unmatchedText = text.substring(lastEnd, match.start);
-                    result.push({
-                        content: unmatchedText,
-                        start: lastEnd,
-                        end: match.start
-                    });
-                }
-
-                result.push({
-                    content: match.word,
-                    start: match.start,
-                    end: match.end
-                });
-
-                lastEnd = match.end;
-            }
-
-            if (lastEnd < text.length) {
-                const remainingText = text.substring(lastEnd);
-                result.push({
-                    content: remainingText,
-                    start: lastEnd,
-                    end: text.length
-                });
-            }
-        }
-
-        return result;
+        return matches;
     }
 
-    private _findLongestMatch(text: string, position: number): { word: string, start: number, end: number } {
+    private findLongestMatch(text: string, position: number): MatchResult {
         let maxLength = 0;
         let matchedWord = '';
 
-        for (let length = 1; length <= text.length - position; length++) {
+        const maxPossibleLength = text.length - position;
+        for (let length = MIN_WORD_LENGTH; length <= maxPossibleLength; length++) {
             const candidate = text.substring(position, position + length);
 
-            if (this._isWordInDict(candidate)) {
+            if (this.isWordInDictionary(candidate)) {
                 maxLength = length;
                 matchedWord = candidate;
             }
@@ -218,32 +222,102 @@ export class Cncut {
         };
     }
 
-    private _isWordInDict(word: string): boolean {
-        if (!word || word.length === 0) {
+    private buildResultFromMatches(result: SplitResult[], matches: MatchResult[], text: string): void {
+        let lastEnd = 0;
+
+        for (const match of matches) {
+            // Add unmatched text before the match
+            if (match.start > lastEnd) {
+                const unmatchedText = text.substring(lastEnd, match.start);
+                result.push(createSplitResult(unmatchedText, lastEnd, match.start));
+            }
+
+            // Add the matched word
+            result.push(createSplitResult(match.word, match.start, match.end));
+            lastEnd = match.end;
+        }
+
+        // Add remaining text after the last match
+        if (lastEnd < text.length) {
+            const remainingText = text.substring(lastEnd);
+            result.push(createSplitResult(remainingText, lastEnd, text.length));
+        }
+    }
+
+    private hasValidDictionaryWords(words: SplitResult[]): boolean {
+        return words.some(word =>
+            word.content.length > MIN_WORD_LENGTH && this.isWordInDictionary(word.content)
+        );
+    }
+
+    private addSegmentedWords(result: SplitResult[], words: SplitResult[], offset: number): void {
+        for (const word of words) {
+            result.push(createSplitResult(
+                word.content,
+                offset + word.start,
+                offset + word.end
+            ));
+        }
+    }
+
+    private addUnsegmentedWord(result: SplitResult[], segment: SplitResult): void {
+        result.push(createSplitResult(
+            segment.content,
+            segment.start,
+            segment.start + segment.content.length
+        ));
+    }
+
+    private isWordInDictionary(word: string): boolean {
+        if (!validateInput(word)) {
             return false;
         }
 
-        let current: DictNode | boolean | number | string | undefined = this._dictionary;
+        let current: DictNode | boolean | number | string | undefined = this.dictionary;
 
-        for (let i = 0; i < word.length; i++) {
-            const char = word[i];
-
-            if (typeof current === 'object' && current !== null) {
-                const node = current as DictNode;
-                if (!node[char]) {
-                    return false;
-                }
-                current = node[char];
-            } else {
+        for (const char of word) {
+            if (typeof current !== 'object' || current === null) {
                 return false;
             }
+
+            const node = current as DictNode;
+            if (!node[char]) {
+                return false;
+            }
+            current = node[char];
         }
 
         return typeof current === 'object' && current !== null &&
             (current as DictNode).word_state === true;
     }
+}
 
+// Main Cncut Class
+export class Cncut {
+    private dictionary: Dictionary;
+    private delimiters: string;
+    private segmenter: TextSegmenter;
 
+    constructor(dictContent: string, delimiters: string = DEFAULT_DELIMITERS) {
+        this.delimiters = delimiters;
+        this.dictionary = DictionaryParser.parse(dictContent);
+        this.segmenter = new TextSegmenter(this.dictionary);
+    }
+
+    public setDelimiters(delimiters: string): void {
+        if (!validateInput(delimiters)) {
+            throw new Error('Delimiters must be a non-empty string');
+        }
+        this.delimiters = delimiters;
+    }
+
+    public getDictionary(): Dictionary {
+        return this.dictionary;
+    }
+
+    public cut(text: string): SplitResult[] {
+        return this.segmenter.segment(text, this.delimiters);
+    }
 }
 
 export default Cncut;
