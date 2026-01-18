@@ -32,49 +32,72 @@ interface DictionaryEntry {
     property: string;
 }
 
-// Utility Functions
-function validateInput(text: unknown): text is string {
-    return typeof text === 'string' && text.length > 0;
-}
 
-function createSplitResult(content: string, start: number, end: number): SplitResult {
-    return { content, start, end };
-}
 
 function splitTextByDelimiters(text: string, delimiters: string): SplitResult[] {
-    if (!validateInput(text)) {
+    if (!text)
         return [];
-    }
 
     const result: SplitResult[] = [];
-    const delimiterSet = new Set(delimiters);
+    const delimiterSet = new Set([" ", "\n", "\r", "\t", ...delimiters]);
+    const whiteSet = new Set([" ", "\n", "\r", "\t"]);
+
     let currentStart = 0;
+    let i = 0;
 
-    for (let i = 0; i < text.length; i++) {
-        if (delimiterSet.has(text[i])) {
+    while (i < text.length) {
+        const char = text[i];
+
+        if (whiteSet.has(char)) {
+            // If there's content before the whitespace, add it to result
             if (currentStart < i) {
-                result.push(createSplitResult(
-                    text.substring(currentStart, i),
-                    currentStart,
-                    i - 1
-                ));
+                result.push({
+                    content: text.substring(currentStart, i),
+                    start: currentStart,
+                    end: i - 1
+                });
             }
-
-            // Skip consecutive delimiters
-            while (i < text.length && delimiterSet.has(text[i])) {
+            // Skip consecutive whitespace
+            while (i < text.length && whiteSet.has(text[i])) {
                 i++;
             }
             currentStart = i;
+        } else if (delimiterSet.has(char)) {
+            // If there's content before the delimiter, add it to result
+            if (currentStart < i) {
+                result.push({
+                    content: text.substring(currentStart, i),
+                    start: currentStart,
+                    end: i - 1
+                });
+            }
+            // Skip consecutive non-whitespace delimiters and add them as a word
+            const delimiterStart = i;
+            while (i < text.length && delimiterSet.has(text[i]) && !whiteSet.has(text[i])) {
+                i++;
+            }
+            result.push({
+                content: text.substring(delimiterStart, i),
+                start: delimiterStart,
+                end: i - 1
+            });
+            // Skip any whitespace after the delimiter
+            while (i < text.length && whiteSet.has(text[i])) {
+                i++;
+            }
+            currentStart = i;
+        } else {
+            i++;
         }
     }
 
     // Add the last segment if exists
     if (currentStart < text.length) {
-        result.push(createSplitResult(
-            text.substring(currentStart),
-            currentStart,
-            text.length - 1
-        ));
+        result.push({
+            content: text.substring(currentStart),
+            start: currentStart,
+            end: text.length - 1
+        });
     }
 
     return result;
@@ -146,9 +169,8 @@ class TextSegmenter {
     constructor(private dictionary: Dictionary) { }
 
     segment(text: string, delimiters: string): SplitResult[] {
-        if (!validateInput(text)) {
+        if (!text)
             return [];
-        }
 
         const segments = splitTextByDelimiters(text, delimiters);
         const result: SplitResult[] = [];
@@ -176,7 +198,11 @@ class TextSegmenter {
         const matches = this.findAllMatches(text);
 
         if (matches.length === 0) {
-            result.push(createSplitResult(text, 0, text.length));
+            result.push({
+                content: text,
+                start: 0,
+                end: text.length
+            });
             return result;
         }
 
@@ -229,18 +255,30 @@ class TextSegmenter {
             // Add unmatched text before the match
             if (match.start > lastEnd) {
                 const unmatchedText = text.substring(lastEnd, match.start);
-                result.push(createSplitResult(unmatchedText, lastEnd, match.start));
+                result.push({
+                    content: unmatchedText,
+                    start: lastEnd,
+                    end: match.start
+                });
             }
 
             // Add the matched word
-            result.push(createSplitResult(match.word, match.start, match.end));
+            result.push({
+                content: match.word,
+                start: match.start,
+                end: match.end
+            });
             lastEnd = match.end;
         }
 
         // Add remaining text after the last match
         if (lastEnd < text.length) {
             const remainingText = text.substring(lastEnd);
-            result.push(createSplitResult(remainingText, lastEnd, text.length));
+            result.push({
+                content: remainingText,
+                start: lastEnd,
+                end: text.length
+            });
         }
     }
 
@@ -252,26 +290,25 @@ class TextSegmenter {
 
     private addSegmentedWords(result: SplitResult[], words: SplitResult[], offset: number): void {
         for (const word of words) {
-            result.push(createSplitResult(
-                word.content,
-                offset + word.start,
-                offset + word.end
-            ));
+            result.push({
+                content: word.content,
+                start: offset + word.start,
+                end: offset + word.end
+            });
         }
     }
 
     private addUnsegmentedWord(result: SplitResult[], segment: SplitResult): void {
-        result.push(createSplitResult(
-            segment.content,
-            segment.start,
-            segment.start + segment.content.length
-        ));
+        result.push({
+            content: segment.content,
+            start: segment.start,
+            end: segment.start + segment.content.length
+        });
     }
 
     private isWordInDictionary(word: string): boolean {
-        if (!validateInput(word)) {
+        if (!word)
             return false;
-        }
 
         let current: DictNode | boolean | number | string | undefined = this.dictionary;
 
@@ -305,9 +342,9 @@ export class Cncut {
     }
 
     public setDelimiters(delimiters: string): void {
-        if (!validateInput(delimiters)) {
+        if (!delimiters)
             throw new Error('Delimiters must be a non-empty string');
-        }
+
         this.delimiters = delimiters;
     }
 
